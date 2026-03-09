@@ -15,13 +15,23 @@ import {
   Edit2,
   Trash2,
   Save,
-  AlertTriangle
+  AlertTriangle,
+  PieChart as PieChartIcon,
+  BarChart as BarChartIcon,
+  Radar as RadarIcon
 } from 'lucide-react';
+import {
+  Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis,
+  PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend,
+  BarChart, Bar, XAxis, YAxis, CartesianGrid
+} from 'recharts';
 import axios from 'axios';
 import DeveloperProfileView from '../components/DeveloperProfileView';
 import { getAuthToken } from '../utils/userContext';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000';
+
+const COLORS = ['#6366f1', '#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4', '#475569'];
 
 const ProjectManagerDashboard = ({ refreshTrigger }) => {
   const [issues, setIssues] = useState([]);
@@ -39,6 +49,9 @@ const ProjectManagerDashboard = ({ refreshTrigger }) => {
   const [totalIssues, setTotalIssues] = useState(0);
   const [isDeleting, setIsDeleting] = useState(null); // id of issue being deleted
   const [editingIssue, setEditingIssue] = useState(null); // issue object being edited
+  const [activeTab, setActiveTab] = useState('issues');
+  const [analytics, setAnalytics] = useState(null);
+  const [analyticsError, setAnalyticsError] = useState(null);
   const [isUpdating, setIsUpdating] = useState(false);
 
   const authHeaders = () => {
@@ -48,7 +61,20 @@ const ProjectManagerDashboard = ({ refreshTrigger }) => {
 
   useEffect(() => {
     fetchConfig();
+    fetchAnalytics();
   }, []);
+
+  const fetchAnalytics = async () => {
+    try {
+      setAnalyticsError(null);
+      const response = await axios.get(`${API_BASE_URL}/api/expertise/analytics`, {
+        headers: authHeaders()
+      });
+      setAnalytics(response.data);
+    } catch (err) {
+      setAnalyticsError(err.response?.data?.detail || 'Failed to sync expertise matrix');
+    }
+  };
 
   const fetchConfig = async () => {
     try {
@@ -63,8 +89,12 @@ const ProjectManagerDashboard = ({ refreshTrigger }) => {
 
   useEffect(() => {
     fetchIssues();
-    // Refresh every 30 seconds
-    const interval = setInterval(fetchIssues, 30000);
+    // Refresh every 60 seconds to reduce log flood
+    const interval = setInterval(() => {
+      if (document.visibilityState === 'visible') {
+        fetchIssues();
+      }
+    }, 60000);
     return () => clearInterval(interval);
   }, [statusFilter, page, refreshTrigger]);
 
@@ -97,12 +127,12 @@ const ProjectManagerDashboard = ({ refreshTrigger }) => {
   };
 
   const handleDeleteIssue = async (issueId) => {
-    if (!window.confirm('Are you absolutely sure you want to delete this mission? This cannot be undone.')) return;
+    if (!window.confirm('Are you absolutely sure you want to delete this issue? This cannot be undone.')) return;
     try {
       setIsDeleting(issueId);
       await axios.delete(`${API_BASE_URL}/api/expertise/issues/${issueId}`, { headers: authHeaders() });
       await fetchIssues();
-      alert('Mission deleted successfully');
+      alert('Issue deleted successfully');
     } catch (err) {
       alert(err.response?.data?.detail || 'Failed to delete issue');
     } finally {
@@ -117,7 +147,7 @@ const ProjectManagerDashboard = ({ refreshTrigger }) => {
       await axios.put(`${API_BASE_URL}/api/expertise/issues/${editingIssue.id}`, editingIssue, { headers: authHeaders() });
       await fetchIssues();
       setEditingIssue(null);
-      alert('Mission updated successfully');
+      alert('Issue updated successfully');
     } catch (err) {
       alert(err.response?.data?.detail || 'Failed to update issue');
     } finally {
@@ -139,7 +169,7 @@ const ProjectManagerDashboard = ({ refreshTrigger }) => {
       setSelectedIssue(null);
       alert(`Issue assigned to ${developerName} successfully!`);
     } catch (err) {
-      alert(err.response?.data?.detail || 'Failed to Assign Mission');
+      alert(err.response?.data?.detail || 'Failed to Assign Issue');
     } finally {
       setAssigning({ ...assigning, [issue.id]: false });
     }
@@ -186,240 +216,412 @@ const ProjectManagerDashboard = ({ refreshTrigger }) => {
   };
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex items-center gap-3 mb-2">
-        <LayoutDashboard className="text-blue-600" size={32} />
-        <div>
-          <h1 className="text-3xl font-black text-black">Project Manager Dashboard</h1>
-          <p className="text-xs text-gray-600">Manage and Assign Missions to experts</p>
+    <div className="space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-500 relative z-10">
+      <div className="flex items-center justify-between mb-2">
+        <div className="flex items-center gap-4">
+          <div className="w-12 h-12 bg-blue-600 rounded-xl shadow-lg shadow-blue-500/20 flex items-center justify-center text-white">
+            <LayoutDashboard size={24} />
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Project Manager Dashboard</h1>
+            <p className="text-sm font-medium text-slate-500 mt-1">Operational Oversight & Expert Deployment</p>
+          </div>
         </div>
       </div>
 
       {/* Statistics */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="bg-white rounded-lg border border-gray-200 p-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600">Total Issues</p>
-              <p className="text-2xl font-black text-gray-900">{stats.total}</p>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm hover:shadow-md transition-shadow group">
+          <div className="flex items-center gap-4 mb-4">
+            <div className="w-10 h-10 bg-blue-50 text-blue-600 rounded-lg flex items-center justify-center">
+              <LayoutDashboard size={20} />
             </div>
-            <LayoutDashboard className="w-8 h-8 text-blue-600" />
+            <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Total Issues</p>
           </div>
+          <p className="text-3xl font-bold text-slate-900 tracking-tight">{stats.total}</p>
         </div>
-        <div className="bg-white rounded-lg border border-gray-200 p-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600">Pending</p>
-              <p className="text-2xl font-black text-yellow-600">{stats.pending}</p>
+
+        <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm hover:shadow-md transition-shadow group">
+          <div className="flex items-center gap-4 mb-4">
+            <div className="w-10 h-10 bg-amber-50 text-amber-500 rounded-lg flex items-center justify-center">
+              <Clock size={20} />
             </div>
-            <Clock className="w-8 h-8 text-yellow-600" />
+            <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Awaiting Analysis</p>
           </div>
+          <p className="text-3xl font-bold text-slate-900 tracking-tight">{stats.pending}</p>
         </div>
-        <div className="bg-white rounded-lg border border-gray-200 p-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600">In Progress</p>
-              <p className="text-2xl font-black text-blue-600">{stats.assigned}</p>
+
+        <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm hover:shadow-md transition-shadow group">
+          <div className="flex items-center gap-4 mb-4">
+            <div className="w-10 h-10 bg-indigo-50 text-indigo-500 rounded-lg flex items-center justify-center">
+              <UserCheck size={20} />
             </div>
-            <UserCheck className="w-8 h-8 text-blue-600" />
+            <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Active Tasks</p>
           </div>
+          <p className="text-3xl font-bold text-slate-900 tracking-tight">{stats.assigned}</p>
         </div>
-        <div className="bg-white rounded-lg border border-gray-200 p-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600">Resolved</p>
-              <p className="text-2xl font-black text-green-600">{stats.resolved}</p>
+
+        <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm hover:shadow-md transition-shadow group">
+          <div className="flex items-center gap-4 mb-4">
+            <div className="w-10 h-10 bg-emerald-50 text-emerald-500 rounded-lg flex items-center justify-center">
+              <CheckCircle size={20} />
             </div>
-            <CheckCircle className="w-8 h-8 text-green-600" />
+            <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Resolved</p>
           </div>
+          <p className="text-3xl font-bold text-slate-900 tracking-tight">{stats.resolved}</p>
         </div>
       </div>
 
-      {/* Filter */}
-      <div className="bg-white rounded-lg border border-gray-200 p-4">
-        <div className="flex items-center gap-4">
-          <Filter className="w-5 h-5 text-gray-600" />
-          <span className="text-sm font-medium text-gray-700">Filter by Status:</span>
-          <select
-            value={statusFilter}
-            onChange={(e) => {
-              setStatusFilter(e.target.value);
-              setPage(1); // Reset to first page on filter change
-            }}
-            className="border border-gray-300 rounded-md px-3 py-1 text-sm"
-          >
-            <option value="all">All Issues</option>
-            <option value="pending">Pending</option>
-            <option value="assigned">Assigned</option>
-            <option value="in_progress">In Progress</option>
-            <option value="done">Done</option>
-            <option value="resolved">Resolved</option>
-          </select>
-        </div>
+      {/* Tab Navigation */}
+      <div className="flex bg-slate-100 p-1 rounded-xl w-fit border border-slate-200">
+        <button
+          onClick={() => setActiveTab('issues')}
+          className={`flex items-center gap-2 px-6 py-2 rounded-lg text-xs font-bold uppercase tracking-widest transition-all ${activeTab === 'issues'
+            ? 'bg-white text-blue-600 shadow-sm'
+            : 'text-slate-500 hover:text-slate-800'
+            }`}
+        >
+          <LayoutDashboard size={14} />
+          Issues
+        </button>
+        <button
+          onClick={() => {
+            setActiveTab('analytics');
+            fetchAnalytics();
+          }}
+          className={`flex items-center gap-2 px-6 py-2 rounded-lg text-xs font-bold uppercase tracking-widest transition-all ${activeTab === 'analytics'
+            ? 'bg-white text-blue-600 shadow-sm'
+            : 'text-slate-500 hover:text-slate-800'
+            }`}
+        >
+          <TrendingUp size={14} />
+          Analytics
+        </button>
       </div>
 
-      {/* Issues Table */}
-      {loading ? (
-        <div className="text-center py-8">
-          <p className="text-gray-600">Loading Issues...</p>
-        </div>
-      ) : error ? (
-        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-          <p className="text-red-800">{error}</p>
-        </div>
-      ) : issues.length === 0 ? (
-        <div className="bg-gray-50 border border-gray-200 rounded-lg p-8 text-center">
-          <LayoutDashboard className="w-12 h-12 text-gray-400 mx-auto mb-2" />
-          <p className="text-gray-600">No issues found</p>
-        </div>
-      ) : (
-        <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-gray-50 border-b border-gray-200">
-                <tr>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase">ID</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase">Title</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase">Category</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase">Submitted By</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase">Status</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase">Assigned To</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-200">
-                {issues.map((issue) => (
-                  <tr key={issue.id} className="hover:bg-gray-50">
-                    <td className="px-4 py-3 text-sm text-gray-900">{issue.id}</td>
-                    <td className="px-4 py-3 text-sm">
-                      <div>
-                        <p className="font-medium text-gray-900">{issue.title}</p>
-                        <p className="text-xs text-gray-500 mt-1 line-clamp-2">{issue.description}</p>
-                      </div>
-                    </td>
-                    <td className="px-4 py-3 text-sm">
-                      <span className="px-2 py-1 rounded bg-blue-100 text-blue-800 text-xs font-medium">
-                        {issue.category}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-sm text-gray-600">
-                      <div>
-                        <p className="font-medium">{issue.submittedByName || 'Unknown'}</p>
-                        <p className="text-xs text-gray-500">{issue.submittedBy}</p>
-                      </div>
-                    </td>
-                    <td className="px-4 py-3 text-sm">
-                      <div className="flex flex-col gap-1">
-                        <span className={`inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-medium border ${getStatusColor(issue.status)}`}>
-                          {getStatusIcon(issue.status)}
-                          {issue.status}
-                        </span>
-                        {issue.status === 'resolved' && issue.resolutionNote && (
-                          <div className="text-[10px] text-gray-500 italic max-w-[150px] truncate" title={issue.resolutionNote}>
-                            Note: {issue.resolutionNote}
-                          </div>
-                        )}
-                      </div>
-                    </td>
-                    <td className="px-4 py-3 text-sm text-gray-600">
-                      {issue.assignedToName ? (
-                        <div>
-                          <p className="font-medium">{issue.assignedToName}</p>
-                          <p className="text-xs text-gray-500">{issue.assignedTo}</p>
-                        </div>
-                      ) : (
-                        <span className="text-gray-400">Not assigned</span>
-                      )}
-                    </td>
-                    <td className="px-4 py-3 text-sm">
-                      <div className="flex items-center gap-2">
-                        <button
-                          onClick={() => setSelectedIssue(issue)}
-                          className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-blue-100 text-blue-700 hover:bg-blue-200"
-                        >
-                          <Eye className="w-3 h-3 mr-1" />
-                          View
-                        </button>
-                        <button
-                          onClick={() => setEditingIssue(issue)}
-                          className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-amber-100 text-amber-700 hover:bg-amber-200"
-                        >
-                          <Edit2 className="w-3 h-3 mr-1" />
-                          Edit
-                        </button>
-                        <button
-                          onClick={() => handleDeleteIssue(issue.id)}
-                          disabled={isDeleting === issue.id}
-                          className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-red-100 text-red-700 hover:bg-red-200 disabled:opacity-50"
-                        >
-                          <Trash2 className="w-3 h-3 mr-1" />
-                          {isDeleting === issue.id ? '...' : 'Delete'}
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+      {activeTab === 'issues' ? (
+        <>
+          {/* Filter Bar */}
+          <div className="bg-white rounded-xl border border-slate-200 p-3 shadow-sm flex items-center justify-between">
+            <div className="flex items-center gap-3 text-slate-400 px-2 border-r border-slate-100 mr-2">
+              <Filter className="w-4 h-4" />
+              <span className="text-[10px] font-bold uppercase tracking-widest">Pipeline Filter</span>
+            </div>
+            <select
+              value={statusFilter}
+              onChange={(e) => {
+                setStatusFilter(e.target.value);
+                setPage(1);
+              }}
+              className="bg-transparent text-slate-600 text-[11px] font-bold rounded-lg px-4 py-1.5 outline-none transition-all cursor-pointer uppercase tracking-tight"
+            >
+              <option value="all">ALL ACTIVE ISSUES</option>
+              <option value="pending">PENDING</option>
+              <option value="assigned">IN PROGRESS</option>
+              <option value="resolved">RESOLVED</option>
+            </select>
           </div>
 
-          {/* Pagination Bar */}
-          <div className="bg-gray-50 border-t border-gray-200 px-4 py-3 flex items-center justify-between sm:px-6">
-            <div className="flex-1 flex justify-between sm:hidden">
-              <button
-                onClick={() => setPage(p => Math.max(1, p - 1))}
-                disabled={page === 1}
-                className="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50"
-              >
-                Previous
-              </button>
-              <button
-                onClick={() => setPage(p => p + 1)}
-                disabled={issues.length < limit}
-                className="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50"
-              >
-                Next
-              </button>
+          {/* Issues Table */}
+          {loading ? (
+            <div className="flex flex-col items-center justify-center py-20 space-y-4">
+              <div className="w-12 h-12 border-4 border-indigo-100 border-t-indigo-600 rounded-full animate-spin" />
+              <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 animate-pulse">Syncing Expertise Data...</p>
             </div>
-            <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
-              <div>
-                <p className="text-sm text-gray-700 uppercase tracking-widest font-black text-[10px]">
-                  Showing <span className="font-bold text-blue-600">{(page - 1) * limit + 1}</span> to <span className="font-bold text-blue-600">{Math.min(page * limit, totalIssues)}</span> of <span className="font-bold text-blue-600">{totalIssues}</span> missions
-                </p>
+          ) : error ? (
+            <div className="bg-red-50 border border-red-100 p-8 rounded-[2rem] flex flex-col items-center text-center gap-4">
+              <div className="w-12 h-12 bg-red-100 rounded-2xl flex items-center justify-center text-red-500 mb-2">
+                <AlertTriangle className="w-6 h-6" />
               </div>
-              <div className="flex items-center gap-2">
-                <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
+              <p className="text-sm font-bold text-red-700">{error}</p>
+            </div>
+          ) : issues.length === 0 ? (
+            <div className="bg-slate-50 border border-slate-100 rounded-[2rem] p-16 text-center flex flex-col items-center gap-6">
+              <div className="w-20 h-20 bg-white rounded-3xl shadow-sm flex items-center justify-center text-slate-300">
+                <LayoutDashboard className="w-10 h-10" />
+              </div>
+              <div>
+                <h3 className="text-xl font-black text-slate-900 tracking-tight">Zero Active Issues</h3>
+                <p className="text-sm font-medium text-slate-500 mt-2">The operational pipeline is currently clear.</p>
+              </div>
+            </div>
+          ) : (
+            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden relative z-10">
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead className="bg-slate-50/50 border-b border-slate-200">
+                    <tr>
+                      <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-400 uppercase tracking-widest">ID</th>
+                      <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-400 uppercase tracking-widest">Issue Detail</th>
+                      <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-400 uppercase tracking-widest">Category</th>
+                      <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-400 uppercase tracking-widest">Submitted By</th>
+                      <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-400 uppercase tracking-widest">Status</th>
+                      <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-400 uppercase tracking-widest">Expert</th>
+                      <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-400 uppercase tracking-widest">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {issues.map((issue) => (
+                      <tr key={issue.id} className="hover:bg-slate-50/50 transition-colors group">
+                        <td className="px-6 py-5">
+                          <span className="text-[10px] font-bold text-slate-400 font-mono">#{issue.id.split('-').pop()}</span>
+                        </td>
+                        <td className="px-6 py-5">
+                          <div className="max-w-xs">
+                            <p className="font-semibold text-slate-900 text-sm truncate">{issue.title}</p>
+                            <p className="text-[11px] text-slate-500 mt-1 line-clamp-1 italic">{issue.description}</p>
+                          </div>
+                        </td>
+                        <td className="px-6 py-5">
+                          <span className="inline-flex items-center px-2 py-1 rounded bg-blue-50 text-blue-700 text-[10px] font-bold uppercase tracking-tight border border-blue-100">
+                            {issue.category}
+                          </span>
+                        </td>
+                        <td className="px-6 py-5">
+                          <div className="flex flex-col">
+                            <span className="text-sm font-semibold text-slate-900">{issue.submittedByName || 'User'}</span>
+                            <span className="text-[10px] text-slate-400 font-medium">{issue.submittedBy}</span>
+                          </div>
+                        </td>
+                        <td className="px-6 py-5">
+                          <div className="flex flex-col gap-1.5 items-start">
+                            <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-tight border ${getStatusColor(issue.status)}`}>
+                              {getStatusIcon(issue.status)}
+                              {issue.status.replace('_', ' ')}
+                            </span>
+                          </div>
+                        </td>
+                        <td className="px-6 py-5">
+                          {issue.assignedToName ? (
+                            <div className="flex flex-col gap-1.5">
+                              <div className="flex items-center gap-2">
+                                <span className="text-sm font-semibold text-slate-900">{issue.assignedToName}</span>
+                                <span className={`px-1.5 py-0.5 rounded text-[8px] font-bold uppercase tracking-tighter border ${issue.assignedToCapacity < 30
+                                  ? 'bg-rose-50 text-rose-600 border-rose-100'
+                                  : issue.assignedToCapacity < 60
+                                    ? 'bg-amber-50 text-amber-600 border-amber-100'
+                                    : 'bg-emerald-50 text-emerald-600 border-emerald-100'
+                                  }`}>
+                                  {issue.assignedToCapacity < 30 ? 'Overloaded' : 'Optimal'}
+                                </span>
+                              </div>
+                              <div className="w-20 h-1 bg-slate-100 rounded-full overflow-hidden">
+                                <div
+                                  className={`h-full transition-all duration-700 ${issue.assignedToCapacity < 30 ? 'bg-rose-500' : issue.assignedToCapacity < 60 ? 'bg-amber-500' : 'bg-emerald-500'}`}
+                                  style={{ width: `${issue.assignedToCapacity}%` }}
+                                />
+                              </div>
+                            </div>
+                          ) : (
+                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest italic">Awaiting Assignment</span>
+                          )}
+                        </td>
+                        <td className="px-6 py-5">
+                          <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <button
+                              onClick={() => setSelectedIssue(issue)}
+                              className="p-1.5 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-all"
+                              title="Details"
+                            >
+                              <Eye size={16} />
+                            </button>
+                            <button
+                              onClick={() => setEditingIssue(issue)}
+                              className="p-1.5 rounded-lg text-slate-400 hover:text-amber-600 hover:bg-amber-50 transition-all"
+                              title="Edit"
+                            >
+                              <Edit2 size={16} />
+                            </button>
+                            <button
+                              onClick={() => handleDeleteIssue(issue.id)}
+                              className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-all"
+                              title="Delete"
+                            >
+                              <Trash2 size={16} />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Pagination Bar */}
+              <div className="bg-slate-50/50 border-t border-slate-200 px-6 py-4 flex items-center justify-between">
+                <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500">
+                  Showing <span className="text-blue-600">{(page - 1) * limit + 1}</span> to <span className="text-blue-600">{Math.min(page * limit, totalIssues)}</span> of <span className="text-blue-600">{totalIssues}</span> issues
+                </p>
+                <div className="flex items-center gap-2">
                   <button
                     onClick={() => setPage(p => Math.max(1, p - 1))}
                     disabled={page === 1}
-                    className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-30"
+                    className="p-2 border border-slate-200 rounded-lg bg-white text-slate-400 hover:text-blue-600 hover:border-blue-200 disabled:opacity-30 transition-all shadow-sm"
                   >
-                    <span className="sr-only">Previous</span>
-                    <ChevronLeft className="h-5 w-5" aria-hidden="true" />
+                    <ChevronLeft size={16} />
                   </button>
-
-                  {[...Array(Math.ceil(totalIssues / limit))].map((_, i) => (
-                    <button
-                      key={i + 1}
-                      onClick={() => setPage(i + 1)}
-                      className={`relative inline-flex items-center px-4 py-2 border text-sm font-black ${page === i + 1
-                        ? 'z-10 bg-blue-600 border-blue-600 text-white'
-                        : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50'
-                        }`}
-                    >
-                      {i + 1}
-                    </button>
-                  )).slice(Math.max(0, page - 3), Math.min(Math.ceil(totalIssues / limit), page + 2))}
-
+                  <div className="flex items-center gap-1">
+                    {[...Array(Math.ceil(totalIssues / limit))].map((_, i) => (
+                      <button
+                        key={i + 1}
+                        onClick={() => setPage(i + 1)}
+                        className={`w-8 h-8 rounded-lg text-[10px] font-bold transition-all ${page === i + 1
+                          ? 'bg-blue-600 text-white shadow-md shadow-blue-200'
+                          : 'bg-white border border-slate-200 text-slate-500 hover:border-blue-200 hover:text-blue-600'
+                          }`}
+                      >
+                        {i + 1}
+                      </button>
+                    )).slice(Math.max(0, page - 3), Math.min(Math.ceil(totalIssues / limit), page + 2))}
+                  </div>
                   <button
                     onClick={() => setPage(p => p + 1)}
                     disabled={page >= Math.ceil(totalIssues / limit)}
-                    className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-30"
+                    className="p-2 border border-slate-200 rounded-lg bg-white text-slate-400 hover:text-blue-600 hover:border-blue-200 disabled:opacity-30 transition-all shadow-sm"
                   >
-                    <span className="sr-only">Next</span>
-                    <ChevronRight className="h-5 w-5" aria-hidden="true" />
+                    <ChevronRight size={16} />
                   </button>
-                </nav>
+                </div>
+              </div>
+            </div>
+          )}
+        </>
+      ) : (
+        /* Analytics View */
+        <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700 pb-10 relative z-10">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+
+            {/* Team Expertise Radar */}
+            <div className="bg-white rounded-2xl border border-slate-200 p-8 shadow-sm flex flex-col min-h-[450px]">
+              <div className="flex items-center gap-4 mb-8">
+                <div className="w-10 h-10 bg-blue-50 text-blue-600 rounded-lg flex items-center justify-center">
+                  <RadarIcon size={20} />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-slate-900 uppercase tracking-widest">Team Expertise Matrix</h3>
+                  <p className="text-[11px] text-slate-500 font-medium mt-1">Cross-functional knowledge distribution</p>
+                </div>
+              </div>
+              <div className="flex-1 flex items-center justify-center">
+                {analyticsError ? (
+                  <div className="text-center p-4">
+                    <AlertTriangle className="w-8 h-8 text-amber-500 mx-auto mb-2 opacity-30" />
+                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">{analyticsError}</p>
+                  </div>
+                ) : analytics?.teamExpertiseMatrix ? (
+                  <ResponsiveContainer width="100%" height={300}>
+                    <RadarChart cx="50%" cy="50%" outerRadius="80%" data={analytics.teamExpertiseMatrix}>
+                      <PolarGrid stroke="#f1f5f9" />
+                      <PolarAngleAxis dataKey="subject" tick={{ fill: '#64748b', fontSize: 10, fontWeight: 600 }} />
+                      <PolarRadiusAxis angle={30} domain={[0, 1]} tick={{ fill: '#cbd5e1', fontSize: 8 }} />
+                      <Radar
+                        name="Average Expertise"
+                        dataKey="A"
+                        stroke="#2563eb"
+                        fill="#3b82f6"
+                        fillOpacity={0.3}
+                      />
+                      <Tooltip
+                        contentStyle={{ borderRadius: '0.75rem', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                        itemStyle={{ fontSize: '10px', fontWeight: 'bold' }}
+                      />
+                    </RadarChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <p className="text-slate-400 text-xs font-bold animate-pulse">Syncing data...</p>
+                )}
+              </div>
+            </div>
+
+            {/* Category Distribution Pie */}
+            <div className="bg-white rounded-2xl border border-slate-200 p-8 shadow-sm flex flex-col min-h-[450px]">
+              <div className="flex items-center gap-4 mb-8">
+                <div className="w-10 h-10 bg-blue-50 text-blue-600 rounded-lg flex items-center justify-center">
+                  <PieChartIcon size={20} />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-slate-900 uppercase tracking-widest">Issue Breakdown</h3>
+                  <p className="text-[11px] text-slate-500 font-medium mt-1">Volume by category over time</p>
+                </div>
+              </div>
+              <div className="flex-1 flex items-center justify-center">
+                {analytics?.categoryDistribution ? (
+                  <ResponsiveContainer width="100%" height={300}>
+                    <PieChart>
+                      <Pie
+                        data={analytics.categoryDistribution}
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={60}
+                        outerRadius={100}
+                        paddingAngle={5}
+                        dataKey="value"
+                      >
+                        {analytics.categoryDistribution.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} stroke="none" />
+                        ))}
+                      </Pie>
+                      <Tooltip
+                        contentStyle={{ borderRadius: '1rem', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
+                        itemStyle={{ fontSize: '10px', fontWeight: 'bold' }}
+                      />
+                      <Legend
+                        iconType="circle"
+                        formatter={(value) => <span className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">{value}</span>}
+                      />
+                    </PieChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <p className="text-slate-400 text-xs font-bold animate-pulse">Calculating Density...</p>
+                )}
+              </div>
+            </div>
+
+            {/* Resolution Velocity Bar */}
+            <div className="bg-white rounded-[2.5rem] border border-slate-100 p-8 shadow-sm flex flex-col lg:col-span-2 min-h-[450px]">
+              <div className="flex items-center gap-4 mb-8">
+                <div className="p-3 bg-emerald-50 text-emerald-600 rounded-2xl">
+                  <BarChartIcon size={20} />
+                </div>
+                <div>
+                  <h3 className="text-sm font-black text-slate-900 tracking-[0.2em] uppercase">Resolution Velocity</h3>
+                  <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1">Deployment Throughput (7-Day Trace)</p>
+                </div>
+              </div>
+              <div className="flex-1">
+                {analytics?.resolutionVelocity ? (
+                  <ResponsiveContainer width="100%" height={300}>
+                    <BarChart data={analytics.resolutionVelocity}>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                      <XAxis
+                        dataKey="date"
+                        axisLine={false}
+                        tickLine={false}
+                        tick={{ fill: '#94a3b8', fontSize: 10, fontWeight: 700 }}
+                      />
+                      <YAxis
+                        axisLine={false}
+                        tickLine={false}
+                        tick={{ fill: '#94a3b8', fontSize: 10, fontWeight: 700 }}
+                      />
+                      <Tooltip
+                        cursor={{ fill: '#f8fafc' }}
+                        contentStyle={{ borderRadius: '1rem', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
+                        itemStyle={{ fontSize: '10px', fontWeight: 'bold' }}
+                      />
+                      <Bar
+                        dataKey="count"
+                        fill="#10b981"
+                        radius={[6, 6, 0, 0]}
+                        barSize={32}
+                      />
+                    </BarChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div className="flex items-center justify-center h-full">
+                    <p className="text-slate-400 text-xs font-bold animate-pulse">Syncing Velocity...</p>
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -434,23 +636,22 @@ const ProjectManagerDashboard = ({ refreshTrigger }) => {
 
               {/* Header / Command Center */}
               <div className="relative px-10 pt-10 pb-12 shrink-0 overflow-hidden">
-                {/* Deep immersive background for header */}
-                <div className="absolute inset-0 bg-gradient-to-br from-slate-900 via-slate-800 to-indigo-950 -z-10" />
-                <div className="absolute top-0 right-0 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl -mr-48 -mt-48" />
+                <div className="absolute inset-0 bg-gradient-to-br from-blue-600 to-indigo-700" />
+                <div className="absolute top-0 right-0 w-96 h-96 bg-white/10 rounded-full blur-3xl -mr-48 -mt-48" />
 
                 <div className="flex justify-between items-start relative z-10">
                   <div className="flex items-center gap-6">
-                    <div className="p-4 bg-white/10 backdrop-blur-2xl rounded-3xl border border-white/20 shadow-2xl shadow-black/40">
-                      <LayoutDashboard className="w-8 h-8 text-blue-400" />
+                    <div className="p-4 bg-white/20 backdrop-blur-2xl rounded-3xl border border-white/20 shadow-2xl">
+                      <LayoutDashboard className="w-8 h-8 text-white" />
                     </div>
                     <div>
                       <div className="flex items-center gap-3 mb-2">
-                        <span className="px-3 py-1 bg-blue-500/20 border border-blue-400/30 rounded-full text-[10px] font-black uppercase text-blue-300 tracking-[0.2em] shadow-inner shadow-blue-400/10">
-                          Mission Detail
+                        <span className="px-3 py-1 bg-white/20 border border-white/30 rounded-full text-[10px] font-black uppercase text-white tracking-widest">
+                          Issue Analysis
                         </span>
-                        <span className="text-white/30 text-[10px] font-mono letter-spacing-widest">OPS_ID: {selectedIssue.id.split('-').pop()}</span>
+                        <span className="text-white/50 text-[10px] font-mono">ID: {selectedIssue.id.split('-').pop()}</span>
                       </div>
-                      <h2 className="text-4xl font-black text-white tracking-tight leading-tight drop-shadow-sm">
+                      <h2 className="text-3xl font-black text-white tracking-tight leading-tight">
                         {selectedIssue.title}
                       </h2>
                     </div>
@@ -460,198 +661,165 @@ const ProjectManagerDashboard = ({ refreshTrigger }) => {
                       setSelectedIssue(null);
                       setSelectedDeveloper(null);
                     }}
-                    className="p-3 bg-white/5 hover:bg-white/10 border border-white/10 rounded-2xl text-white transition-all hover:rotate-90 duration-300 backdrop-blur-md shadow-xl"
+                    className="p-3 bg-white/10 hover:bg-white/20 border border-white/10 rounded-2xl text-white transition-all duration-300 backdrop-blur-md"
                   >
                     <X size={24} />
                   </button>
                 </div>
               </div>
 
-              <div className="flex-1 overflow-y-auto px-10 pb-10 -mt-6">
+              <div className="flex-1 overflow-y-auto px-10 pb-10 -mt-6 custom-scrollbar">
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
 
                   {/* Main Details */}
                   <div className="lg:col-span-7 space-y-8">
-                    <div className="bg-white rounded-[2.5rem] p-10 shadow-[0_20px_50px_rgba(0,0,0,0.04)] border border-slate-100 relative group/card overflow-hidden">
-                      <div className="absolute top-0 left-0 w-1 h-full bg-blue-500/20 group-hover/card:bg-blue-500 transition-colors duration-500" />
+                    <div className="bg-white rounded-[2rem] p-10 shadow-sm border border-slate-200 relative group overflow-hidden">
+                      <div className="absolute top-0 left-0 w-1.5 h-full bg-blue-600" />
 
-                      <div className="mb-10">
+                      <div className="mb-8">
                         <div className="flex items-center gap-3 mb-4">
-                          <div className="w-6 h-0.5 bg-blue-500/30" />
-                          <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Objective Description</h4>
+                          <div className="w-6 h-0.5 bg-blue-600/30" />
+                          <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-400">Detailed Description</h4>
                         </div>
-                        <p className="text-slate-800 text-xl leading-relaxed font-semibold tracking-tight">
+                        <p className="text-slate-800 text-lg leading-relaxed font-semibold">
                           {selectedIssue.description}
                         </p>
                       </div>
 
-                      <div className="grid grid-cols-2 gap-10 pt-10 border-t border-slate-50">
-                        <div className="space-y-6">
-                          <div className="group">
-                            <h4 className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 mb-2 group-hover:text-blue-600 transition-colors">Core Category</h4>
-                            <div className="inline-flex items-center gap-2.5 px-4 py-2 bg-blue-50 text-blue-700 rounded-2xl border border-blue-100 shadow-sm">
-                              <div className="w-2 h-2 bg-blue-600 rounded-full shadow-[0_0_8px_rgba(37,99,235,0.4)]" />
-                              <span className="text-xs font-black uppercase tracking-widest">{selectedIssue.category}</span>
-                            </div>
-                          </div>
-                          <div>
-                            <h4 className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 mb-2">Workflow State</h4>
-                            <div className={`inline-flex items-center gap-2.5 px-4 py-2 rounded-2xl border shadow-sm ${getStatusColor(selectedIssue.status)}`}>
-                              {getStatusIcon(selectedIssue.status)}
-                              <span className="text-xs font-black uppercase tracking-widest">{selectedIssue.status}</span>
-                            </div>
+                      <div className="grid grid-cols-2 gap-8 pt-8 border-t border-slate-50">
+                        <div>
+                          <h4 className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-3">Core Category</h4>
+                          <div className="inline-flex items-center gap-2.5 px-4 py-2 bg-blue-50 text-blue-700 rounded-xl border border-blue-100 font-bold text-xs">
+                            {selectedIssue.category}
                           </div>
                         </div>
-                        <div className="space-y-6">
-                          <div>
-                            <h4 className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 mb-2">Intelligence Source</h4>
-                            <div className="flex items-center gap-3">
-                              <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-400 font-bold text-xs uppercase">
-                                {selectedIssue.submittedByName?.charAt(0) || 'U'}
-                              </div>
-                              <div>
-                                <p className="text-sm font-black text-slate-900 tracking-tight">{selectedIssue.submittedByName || 'User'}</p>
-                                <p className="text-[10px] text-slate-400 font-mono tracking-tighter uppercase">{selectedIssue.submittedBy}</p>
-                              </div>
-                            </div>
+                        <div>
+                          <h4 className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-3">Workflow State</h4>
+                          <div className={`inline-flex items-center gap-2.5 px-4 py-2 rounded-xl border font-bold text-xs uppercase ${getStatusColor(selectedIssue.status)}`}>
+                            {selectedIssue.status}
                           </div>
-                          <div>
-                            <h4 className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 mb-2">Timestamp</h4>
-                            <div className="flex items-center gap-2.5 text-slate-500 font-medium">
-                              <Clock className="w-4 h-4 opacity-30" />
-                              <p className="text-[11px] font-bold tracking-tight">
-                                {selectedIssue.createdAt && !isNaN(new Date(selectedIssue.createdAt)) ? new Date(selectedIssue.createdAt).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' }) : 'N/A'}
-                              </p>
+                        </div>
+                        <div>
+                          <h4 className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-3">Submitted By</h4>
+                          <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-400 font-bold text-[10px]">
+                              {selectedIssue.submittedByName?.charAt(0) || 'U'}
                             </div>
+                            <p className="text-xs font-bold text-slate-900">{selectedIssue.submittedByName}</p>
                           </div>
+                        </div>
+                        <div>
+                          <h4 className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-3">Timestamp</h4>
+                          <p className="text-xs font-bold text-slate-900">
+                            {selectedIssue.createdAt && !isNaN(new Date(selectedIssue.createdAt)) ? new Date(selectedIssue.createdAt).toLocaleDateString() : 'N/A'}
+                          </p>
                         </div>
                       </div>
                     </div>
 
-                    {/* Assignment Overlay if assigned */}
+                    {/* Assignment Case */}
                     {selectedIssue.assignedTo && (
-                      <div className={`rounded-[2.5rem] p-10 border-2 shadow-2xl relative overflow-hidden transition-all duration-700 ${selectedIssue.status === 'resolved'
-                        ? 'bg-emerald-950 border-emerald-400/30 text-emerald-50'
-                        : 'bg-slate-900 border-blue-400/30 text-white shadow-blue-900/40'
+                      <div className={`rounded-[2rem] p-10 border-2 shadow-sm relative overflow-hidden transition-all duration-700 ${selectedIssue.status === 'resolved'
+                        ? 'bg-emerald-50 border-emerald-100 text-emerald-950'
+                        : 'bg-white border-blue-100/50 text-slate-900'
                         }`}>
-                        <div className="absolute top-0 right-0 p-8 opacity-5">
-                          <UserCheck className="w-40 h-40" />
-                        </div>
 
                         <div className="flex items-center justify-between mb-8 relative z-10">
                           <div className="flex items-center gap-6">
-                            <div className={`p-5 rounded-3xl ${selectedIssue.status === 'resolved' ? 'bg-emerald-500/20' : 'bg-blue-500/20 shadow-inner'}`}>
-                              <UserCheck className={`w-8 h-8 ${selectedIssue.status === 'resolved' ? 'text-emerald-400' : 'text-blue-400'}`} />
+                            <div className={`p-5 rounded-3xl ${selectedIssue.status === 'resolved' ? 'bg-emerald-500/10 text-emerald-600' : 'bg-blue-500/10 text-blue-600'}`}>
+                              <UserCheck className="w-8 h-8" />
                             </div>
                             <div>
-                              <h3 className="text-[10px] font-black uppercase tracking-[0.3em] opacity-50 mb-1 leading-none">
-                                {selectedIssue.status === 'resolved' ? 'OPERATIONAL SUCCESS' : 'ACTIVE OPERATOR'}
+                              <h3 className={`text-[10px] font-black uppercase tracking-[0.3em] mb-1 leading-none ${selectedIssue.status === 'resolved' ? 'text-emerald-600/60' : 'text-blue-600/60'}`}>
+                                {selectedIssue.status === 'resolved' ? 'Operational success' : 'Active individual'}
                               </h3>
-                              <p className="text-4xl font-black tracking-tighter leading-none mt-3">
+                              <p className="text-3xl font-black tracking-tighter mt-3">
                                 {selectedIssue.assignedToName}
                               </p>
-                              <div className="flex items-center gap-2 mt-4 opacity-40">
-                                <span className="w-1 h-3 bg-current" />
-                                <p className="text-[11px] font-mono tracking-widest uppercase">{selectedIssue.assignedTo}</p>
-                              </div>
                             </div>
                           </div>
                           {selectedIssue.status === 'resolved' && (
-                            <div className="px-6 py-3 bg-emerald-500 text-white rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] shadow-2xl shadow-emerald-500/50 animate-pulse">
-                              MISSION_RESOLVED
+                            <div className="px-6 py-3 bg-emerald-500 text-white rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-emerald-500/20">
+                              Resolved
                             </div>
                           )}
                         </div>
 
                         {selectedIssue.status === 'resolved' && selectedIssue.resolutionNote && (
-                          <div className="bg-white/5 border border-white/10 rounded-[2rem] p-8 mt-6 relative group hover:bg-white/[0.08] transition-all duration-500">
-                            <div className="absolute -top-3 left-8 px-4 py-1.5 bg-emerald-500 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] shadow-lg shadow-emerald-950/50">Post-Mission Intel</div>
-                            <p className="text-lg font-medium leading-relaxed italic opacity-95 text-emerald-100/90 py-2">
+                          <div className="bg-white/40 border border-emerald-200/50 rounded-2xl p-6 mt-6 relative">
+                            <div className="text-[9px] font-black uppercase tracking-widest text-emerald-600 mb-2">Resolution Note</div>
+                            <p className="text-base font-medium leading-relaxed italic text-emerald-900/80">
                               "{selectedIssue.resolutionNote}"
                             </p>
                           </div>
                         )}
-
-                        <div className="mt-10 flex flex-wrap gap-10 pt-8 border-t border-white/10 opacity-40 relative z-10">
-                          <div className="flex items-center gap-3">
-                            <Clock className="w-4 h-4" />
-                            <span className="text-[10px] font-black uppercase tracking-widest">DEPLOY_INIT: {selectedIssue.assignedAt && !isNaN(new Date(selectedIssue.assignedAt)) ? new Date(selectedIssue.assignedAt).toLocaleDateString() : 'N/A'}</span>
-                          </div>
-                          {selectedIssue.resolvedAt && (
-                            <div className="flex items-center gap-3">
-                              <CheckCircle className="w-4 h-4" />
-                              <span className="text-[10px] font-black uppercase tracking-widest">DEPLOY_DONE: {selectedIssue.resolvedAt && !isNaN(new Date(selectedIssue.resolvedAt)) ? new Date(selectedIssue.resolvedAt).toLocaleDateString() : 'N/A'}</span>
-                            </div>
-                          )}
-                        </div>
                       </div>
                     )}
                   </div>
 
                   {/* Recommendations Column */}
                   <div className="lg:col-span-5 flex flex-col h-full">
-                    <div className="bg-slate-900 rounded-[2.5rem] p-8 h-full border border-white/5 shadow-[0_40px_80px_rgba(0,0,0,0.5)] relative overflow-hidden group/recs flex flex-col min-h-[600px]">
-                      {/* Background accent */}
-                      <div className="absolute top-0 right-0 p-8 opacity-10 group-hover/recs:opacity-20 transition-opacity pointer-events-none">
-                        <TrendingUp className="w-24 h-24 text-blue-400 rotate-12" />
-                      </div>
+                    <div className="bg-white rounded-[2rem] p-8 h-full border border-slate-200 shadow-sm relative overflow-hidden flex flex-col min-h-[600px]">
 
                       <div className="relative z-10 flex flex-col h-full">
                         <div className="flex items-center gap-4 mb-8">
-                          <div className="w-10 h-1 bg-gradient-to-r from-blue-600 to-transparent rounded-full shadow-[0_0_15px_rgba(37,99,235,0.6)]" />
-                          <h3 className="text-sm font-black text-white tracking-[0.3em] uppercase">STRATEGIC_RECS</h3>
+                          <div className="w-1.5 h-6 bg-blue-600 rounded-full shadow-[0_0_10px_rgba(37,99,235,0.4)]" />
+                          <h3 className="text-[10px] font-black text-slate-400 tracking-widest uppercase">Expert Recommendations</h3>
                         </div>
 
                         <div className="space-y-4 flex-1 overflow-y-auto pr-2 custom-scrollbar no-scrollbar">
                           {selectedIssue.topExperts?.map((expert, idx) => (
                             <div
                               key={expert.email}
-                              className="bg-black/30 border border-white/5 rounded-[2.2rem] p-6 hover:bg-black/50 transition-all hover:-translate-y-1 hover:shadow-2xl hover:shadow-black/60 group/expert relative overflow-hidden active:scale-[0.98]"
+                              className="bg-slate-50 border border-slate-100 rounded-[1.8rem] p-6 hover:bg-white hover:border-blue-200 hover:shadow-xl hover:shadow-blue-900/5 transition-all group/expert relative active:scale-[0.98]"
                             >
-                              {/* Expert highlight glow */}
-                              <div className="absolute inset-0 bg-blue-500/0 group-hover/expert:bg-blue-500/[0.02] transition-colors" />
-
                               <div className="flex items-start justify-between mb-6 relative z-10">
                                 <div className="flex items-center gap-4">
-                                  <div className="w-16 h-16 bg-white/5 group-hover/expert:bg-blue-600/20 rounded-[1.8rem] flex items-center justify-center border border-white/10 text-blue-400 font-black relative transition-all duration-500 group-hover:shadow-[0_0_20px_rgba(37,99,235,0.2)]">
-                                    <User className="w-8 h-8 group-hover/expert:scale-110 transition-transform" />
-                                    <div className="absolute -bottom-1 -right-1 w-8 h-8 bg-blue-600 text-white text-xs font-black flex items-center justify-center rounded-2xl shadow-xl">
+                                  <div className="w-14 h-14 bg-white rounded-2xl flex items-center justify-center border border-slate-200 text-blue-600 font-black relative transition-all group-hover:border-blue-400 group-hover:shadow-lg">
+                                    <User className="w-7 h-7" />
+                                    <div className="absolute -bottom-1 -right-1 w-7 h-7 bg-blue-600 text-white text-[10px] font-black flex items-center justify-center rounded-xl shadow-lg border-2 border-white">
                                       {idx + 1}
                                     </div>
                                   </div>
                                   <div>
-                                    <p className="font-extrabold text-white text-xl tracking-tighter mb-0.5">{expert.name}</p>
-                                    <p className="text-[10px] text-slate-500 font-mono tracking-widest uppercase">{expert.email}</p>
+                                    <p className="font-bold text-slate-900 text-lg tracking-tight mb-0.5">{expert.name}</p>
+                                    <p className="text-[9px] text-slate-400 font-mono tracking-widest uppercase">{expert.email}</p>
                                   </div>
                                 </div>
                               </div>
 
-                              <div className="grid grid-cols-2 gap-4 mb-6 relative z-10">
-                                <div className="bg-black/60 p-4 rounded-2xl border border-white/[0.03] flex flex-col justify-center text-center group-hover/expert:border-blue-500/20 transition-colors">
-                                  <p className="text-[8px] font-black uppercase text-slate-500 mb-1 tracking-[0.3em]">Authority</p>
-                                  <p className="text-2xl font-black text-blue-400 tracking-tighter">{(expert.expertiseScore * 100).toFixed(0)}%</p>
+                              <div className="grid grid-cols-3 gap-3 mb-6 relative z-10">
+                                <div className="bg-white p-3 rounded-xl border border-slate-100 flex flex-col justify-center text-center">
+                                  <p className="text-[7px] font-black uppercase text-slate-400 mb-1">Auth</p>
+                                  <p className="text-lg font-black text-blue-600 tracking-tighter">{(expert.expertiseScore * 100).toFixed(0)}%</p>
                                 </div>
-                                <div className="bg-black/60 p-4 rounded-2xl border border-white/[0.03] flex flex-col justify-center text-center group-hover/expert:border-white/10 transition-colors">
-                                  <p className="text-[8px] font-black uppercase text-slate-500 mb-1 tracking-[0.3em]">Workload</p>
-                                  <p className={`text-2xl font-black tracking-tighter ${expert.pending_count > 3 ? 'text-orange-500' : 'text-slate-300'}`}>
-                                    {expert.pending_count || 0}
+                                <div className="bg-white p-3 rounded-xl border border-slate-100 flex flex-col justify-center text-center">
+                                  <p className="text-[7px] font-black uppercase text-slate-400 mb-1">Cap</p>
+                                  <p className={`text-lg font-black tracking-tighter ${(expert.capacity_percentage ?? 100) < 30 ? 'text-rose-500' : (expert.capacity_percentage ?? 100) < 60 ? 'text-amber-500' : 'text-emerald-500'}`}>
+                                    {expert.capacity_percentage ?? '100'}%
+                                  </p>
+                                </div>
+                                <div className="bg-white p-3 rounded-xl border border-slate-100 flex flex-col justify-center text-center">
+                                  <p className="text-[7px] font-black uppercase text-slate-400 mb-1">Load</p>
+                                  <p className="text-lg font-black text-slate-900 tracking-tighter">
+                                    {expert.workload_score?.toFixed(1) || '0.0'}
                                   </p>
                                 </div>
                               </div>
 
-                              <div className="flex flex-col gap-5 relative z-10">
+                              <div className="flex flex-col gap-4 relative z-10">
                                 <div className="flex items-center justify-between">
-                                  <span className={`px-4 py-1.5 rounded-full text-[9px] font-black uppercase tracking-[0.2em] shadow-sm ${expert.recommendation_reason === 'preference'
-                                    ? 'bg-purple-500/10 text-purple-400 border border-purple-500/20'
-                                    : 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+                                  <span className={`px-3 py-1 rounded-lg text-[8px] font-black uppercase tracking-widest ${expert.recommendation_reason === 'preference'
+                                    ? 'bg-purple-50 text-purple-600 border border-purple-100'
+                                    : 'bg-emerald-50 text-emerald-600 border border-emerald-100'
                                     }`}>
-                                    {expert.recommendation_reason === 'preference' ? 'INTENT_MATCH' : 'EXPERT_TRACK'}
+                                    {expert.recommendation_reason === 'preference' ? 'Intent Match' : 'Expert Track'}
                                   </span>
                                   <button
                                     onClick={() => setSelectedDeveloper(expert.email)}
-                                    className="text-[10px] font-black text-blue-500 uppercase tracking-widest flex items-center gap-2 group/intel"
+                                    className="text-[10px] font-black text-blue-600 uppercase tracking-widest flex items-center gap-1.5 hover:text-blue-700 transition-colors"
                                   >
-                                    VIEW_INTEL <Eye className="w-4 h-4 group-hover/intel:scale-110 transition-transform" />
+                                    Profile <Eye className="w-3.5 h-3.5" />
                                   </button>
                                 </div>
 
@@ -659,9 +827,9 @@ const ProjectManagerDashboard = ({ refreshTrigger }) => {
                                   <button
                                     onClick={() => handleAssignIssue(selectedIssue, expert.email, expert.name)}
                                     disabled={assigning[selectedIssue.id]}
-                                    className="w-full py-4.5 bg-white text-slate-900 rounded-[1.5rem] text-xs font-black uppercase tracking-[0.3em] hover:bg-blue-50 transition-all active:scale-95 disabled:opacity-30 shadow-2xl shadow-white/5 active:bg-blue-100"
+                                    className="w-full py-4 bg-blue-600 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-blue-700 transition-all active:scale-95 disabled:opacity-30 shadow-lg shadow-blue-600/20"
                                   >
-                                    {assigning[selectedIssue.id] ? 'DEPL_SYCNING...' : 'CONFIRM_DEPLOYMENT'}
+                                    {assigning[selectedIssue.id] ? 'Assigning...' : 'Assign Individual'}
                                   </button>
                                 )}
                               </div>
@@ -678,7 +846,7 @@ const ProjectManagerDashboard = ({ refreshTrigger }) => {
         )
       }
 
-      {/* Update Mission Modal */}
+      {/* Update Issue Modal */}
       {editingIssue && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md flex items-center justify-center z-[9999] p-4 animate-in fade-in duration-300">
           <div className="bg-white rounded-[2.5rem] shadow-2xl max-w-2xl w-full border border-gray-200 overflow-hidden">
@@ -688,8 +856,8 @@ const ProjectManagerDashboard = ({ refreshTrigger }) => {
                   <Edit2 className="w-6 h-6 text-amber-600" />
                 </div>
                 <div>
-                  <h2 className="text-2xl font-black text-slate-900">Update Mission</h2>
-                  <p className="text-xs text-slate-500 font-medium">Refining parameters for {editingIssue.id}</p>
+                  <h2 className="text-2xl font-black text-slate-900">Update Issue</h2>
+                  <p className="text-xs text-slate-500 font-medium">Updating details for {editingIssue.id}</p>
                 </div>
               </div>
               <button
@@ -703,7 +871,7 @@ const ProjectManagerDashboard = ({ refreshTrigger }) => {
             <form onSubmit={handleUpdateIssue} className="p-8 space-y-6">
               <div className="space-y-4">
                 <div>
-                  <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2 ml-1">Mission Title</label>
+                  <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2 ml-1">Issue Title</label>
                   <input
                     type="text"
                     required
@@ -714,7 +882,7 @@ const ProjectManagerDashboard = ({ refreshTrigger }) => {
                 </div>
 
                 <div>
-                  <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2 ml-1">Intelligence Debrief (Description)</label>
+                  <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2 ml-1">Issue Description</label>
                   <textarea
                     required
                     rows={4}
@@ -732,10 +900,10 @@ const ProjectManagerDashboard = ({ refreshTrigger }) => {
                       onChange={(e) => setEditingIssue({ ...editingIssue, priority: e.target.value })}
                       className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all font-bold"
                     >
-                      <option value="low">LOW_PRIORITY</option>
-                      <option value="medium">MEDIUM_PRIORITY</option>
-                      <option value="high">HIGH_PRIORITY</option>
-                      <option value="critical">CRITICAL_VITAL</option>
+                      <option value="low">LOW</option>
+                      <option value="medium">MEDIUM</option>
+                      <option value="high">HIGH</option>
+                      <option value="critical">CRITICAL</option>
                     </select>
                   </div>
                   <div>
@@ -768,10 +936,10 @@ const ProjectManagerDashboard = ({ refreshTrigger }) => {
                   disabled={isUpdating}
                   className="flex-1 px-6 py-4 bg-blue-600 text-white rounded-2xl text-xs font-black uppercase tracking-widest hover:bg-blue-700 transition-all shadow-xl shadow-blue-200 disabled:opacity-50 flex items-center justify-center gap-2"
                 >
-                  {isUpdating ? 'UPLINKING...' : (
+                  {isUpdating ? 'SAVING...' : (
                     <>
                       <Save className="w-4 h-4" />
-                      COMMIT_CHANGES
+                      SAVE_CHANGES
                     </>
                   )}
                 </button>

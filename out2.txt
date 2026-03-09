@@ -1,0 +1,17 @@
+﻿Adding sample pending issues to developer profiles...
+------------------------------------------------------------
+[ERROR] Failed to assign 'Fix OAuth token expiration issue': Developer with email charlie@example.com not found
+[ERROR] Failed to assign 'Implement multi-factor authentication': Developer with email charlie@example.com not found
+[ERROR] Failed to assign 'Security audit for API endpoints': Developer with email charlie@example.com not found
+[ERROR] Failed to assign 'Optimize user profile API endpoint': Developer with email bob@example.com not found
+[ERROR] Failed to assign 'Database migration for user table': Developer with email bob@example.com not found
+[ERROR] Failed to assign 'Redesign dashboard layout': Developer with email diana@example.com not found
+[ERROR] Failed to assign 'Optimize page load time': Developer with email diana@example.com not found
+[ERROR] Failed to assign 'Update API documentation': Developer with email alice@example.com not found
+[ERROR] Failed to assign 'Fix mobile responsive issues': Developer with email alice@example.com not found
+[ERROR] Failed to assign 'Set up CI/CD pipeline': Developer with email edward@example.com not found
+[ERROR] Failed to assign 'Add unit tests for authentication module': Developer with email edward@example.com not found
+------------------------------------------------------------
+Successfully assigned 0 pending issues!
+
+You can now view pending issues in developer profiles.

@@ -186,7 +186,7 @@ const DeveloperProfileView = ({
     );
     if (isModal) {
       return (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-[200] p-4">
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-[10001] p-4">
           <div className="bg-white rounded-[2rem] p-10 shadow-2xl border border-white/20">
             {loadingContent}
           </div>
@@ -236,210 +236,192 @@ const DeveloperProfileView = ({
   });
 
   const content = (
-    <div className={`bg-slate-50 rounded-[2.5rem] shadow-2xl w-full flex flex-col relative overflow-hidden ${isModal ? 'max-w-6xl max-h-[92vh] border border-white/20' : ''}`}>
-      {/* Decorative background accent */}
-      <div className={`absolute top-0 left-0 w-full h-48 bg-gradient-to-br from-slate-900 via-blue-900 to-indigo-900 z-0 ${!isModal ? 'rounded-t-[2.5rem]' : ''}`} />
-
-      {/* Header */}
-      <div className="p-8 pb-12 flex justify-between items-start shrink-0 relative">
+    <div className={`bg-[#F9FAFB] rounded-2xl shadow-xl w-full flex flex-col relative overflow-hidden ${isModal ? 'max-w-6xl max-h-[92vh] border border-slate-200' : ''}`}>
+      {/* SaaS Header */}
+      <div className="bg-white border-b border-slate-200 p-8 flex justify-between items-center shrink-0 relative z-10">
         <div className="flex items-center gap-6">
           <div className="relative">
-            <div className="w-24 h-24 bg-white/10 backdrop-blur-md rounded-3xl flex items-center justify-center border border-white/20 shadow-xl overflow-hidden group">
-              <User className="w-12 h-12 text-white group-hover:scale-110 transition-transform duration-500" />
-              <div className="absolute inset-0 bg-gradient-to-tr from-blue-500/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+            <div className="w-20 h-20 bg-blue-50 rounded-2xl flex items-center justify-center border border-blue-100 shadow-sm overflow-hidden group">
+              <User className="w-10 h-10 text-blue-600 transition-transform duration-500 group-hover:scale-110" />
             </div>
-            <div className="absolute -bottom-2 -right-2 w-8 h-8 bg-emerald-500 rounded-xl border-4 border-slate-900 flex items-center justify-center">
-              <div className="w-2 h-2 bg-white rounded-full animate-pulse" />
+            <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-emerald-500 rounded-lg border-4 border-white flex items-center justify-center">
+              <div className="w-1.5 h-1.5 bg-white rounded-full animate-pulse" />
             </div>
           </div>
           <div>
             <div className="flex items-center gap-3">
-              <h2 className="text-3xl font-black text-white tracking-tight relative z-10">{dev.name}</h2>
-              <span className={`px-3 py-1 backdrop-blur-md border rounded-full text-[10px] font-black uppercase tracking-widest ${dev.status?.toLowerCase() === 'active'
-                ? 'bg-emerald-500/20 border-emerald-400/30 text-emerald-200'
+              <h2 className="text-2xl font-bold text-slate-900 tracking-tight">{dev.name}</h2>
+              <span className={`px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-widest border transition-all ${dev.status?.toLowerCase() === 'active'
+                ? 'bg-emerald-50 border-emerald-100 text-emerald-600'
                 : dev.status?.toLowerCase() === 'busy'
-                  ? 'bg-orange-500/20 border-orange-400/30 text-orange-200'
-                  : 'bg-blue-500/20 border-blue-400/30 text-blue-200'
+                  ? 'bg-amber-50 border-amber-100 text-amber-600'
+                  : 'bg-blue-50 border-blue-100 text-blue-600'
                 }`}>
                 {dev.status || 'Active'}
               </span>
             </div>
-            <div className="flex flex-wrap items-center gap-4 mt-3">
-              <div className="flex items-center gap-2 text-blue-100/70 hover:text-white transition-colors cursor-pointer group">
-                <div className="p-1.5 bg-white/5 rounded-lg border border-white/10 group-hover:bg-white/10 transition-colors">
-                  <Mail className="w-4 h-4" />
-                </div>
+            <div className="flex flex-wrap items-center gap-4 mt-2">
+              <div className="flex items-center gap-2 text-slate-500">
+                <Mail className="w-4 h-4" />
                 <span className="text-sm font-medium">{dev.email}</span>
               </div>
-              <div className="h-4 w-px bg-white/10 mx-1" />
-              <div className="flex items-center gap-2 text-blue-100/70">
-                <div className="p-1.5 bg-white/5 rounded-lg border border-white/10">
-                  <LayoutDashboard className="w-4 h-4" />
-                </div>
-                <span className="text-sm font-medium uppercase tracking-wider text-[11px] font-black">{dev.role || 'Developer'}</span>
+              <div className="h-3 w-px bg-slate-200 mx-1" />
+              <div className="flex items-center gap-2 text-slate-500">
+                <LayoutDashboard className="w-4 h-4" />
+                <span className="text-[10px] font-bold uppercase tracking-wider">{dev.role || 'Developer'}</span>
               </div>
             </div>
           </div>
         </div>
         <button
           onClick={onClose}
-          className="p-3 bg-white/5 hover:bg-white/10 border border-white/10 rounded-2xl text-white transition-all hover:rotate-90 duration-300"
+          className="p-2 hover:bg-slate-100 rounded-xl text-slate-400 transition-colors"
         >
           <X size={24} />
         </button>
       </div>
 
       {/* Content Body */}
-      <div className="flex-1 overflow-y-auto p-8 pt-0 -mt-4">
+      <div className="flex-1 overflow-y-auto p-8 bg-[#F9FAFB]">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
 
           {/* Left Column: Skill Matrix & Preferences */}
           <div className="lg:col-span-8 space-y-8">
 
-            {/* Modern Skill Bars */}
-            <div className="bg-white rounded-[2rem] p-8 shadow-sm border border-slate-100 relative overflow-hidden group/card">
-              <div className="absolute top-0 right-0 w-32 h-32 bg-blue-50 rounded-full -mr-16 -mt-16 transition-transform group-hover/card:scale-150 duration-1000" />
-
-              <div className="relative">
-                <div className="flex justify-between items-end mb-8">
-                  <div>
-                    <h3 className="text-xl font-black text-slate-900 tracking-tight flex items-center gap-2">
-                      <TrendingUp className="w-6 h-6 text-blue-600" />
-                      Intelligence Matrix
-                    </h3>
-                    <p className="text-sm text-slate-400 font-medium">Verified expertise and system activity scores</p>
-                  </div>
+            {/* Expertise Areas */}
+            <div className="bg-white rounded-2xl p-8 shadow-sm border border-slate-200">
+              <div className="flex justify-between items-center mb-8 pb-4 border-b border-slate-100">
+                <div>
+                  <h3 className="text-lg font-bold text-slate-900 tracking-tight flex items-center gap-2">
+                    <TrendingUp className="w-5 h-5 text-blue-600" />
+                    Expertise Matrix
+                  </h3>
+                  <p className="text-xs text-slate-500 font-medium mt-1">Verified scores based on historical issue resolution</p>
                 </div>
+              </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-8">
-                  {categories.map((category) => {
-                    const score = dev.expertise?.[category] || 0;
-                    const isSelected = selectedCategory === category;
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-x-10 gap-y-6">
+                {categories.map((category) => {
+                  const score = dev.expertise?.[category] || 0;
+                  const isSelected = selectedCategory === category;
 
-                    return (
-                      <div
-                        key={category}
-                        className={`group/skill cursor-pointer transition-all ${isSelected ? 'scale-105' : ''}`}
-                        onClick={() => setSelectedCategory(isSelected ? null : category)}
-                      >
-                        <div className="flex justify-between items-end mb-2">
-                          <span className="text-sm font-black text-slate-700 tracking-tight group-hover/skill:text-blue-600 transition-colors uppercase text-[11px] tracking-[0.1em]">
-                            {category}
-                          </span>
-                          <span className="text-xs font-black text-slate-900">{Math.round(score * 100)}%</span>
-                        </div>
-                        <div className="relative h-2 bg-slate-100 rounded-full overflow-hidden">
-                          <div
-                            className={`absolute top-0 left-0 h-full rounded-full transition-all duration-1000 ease-out ${score > 0.8 ? 'bg-gradient-to-r from-emerald-500 to-teal-400' :
-                              score > 0.5 ? 'bg-gradient-to-r from-blue-600 to-indigo-500' :
-                                'bg-gradient-to-r from-slate-400 to-slate-300'
-                              }`}
-                            style={{ width: `${score * 100}%` }}
-                          />
-                          {isSelected && (
-                            <div className="absolute inset-0 bg-white/20 animate-pulse" />
-                          )}
-                        </div>
+                  return (
+                    <div
+                      key={category}
+                      className={`group cursor-pointer transition-all duration-300 ${isSelected ? 'scale-[1.02]' : ''}`}
+                      onClick={() => setSelectedCategory(isSelected ? null : category)}
+                    >
+                      <div className="flex justify-between items-end mb-2.5">
+                        <span className="text-[11px] font-bold text-slate-700 uppercase tracking-widest group-hover:text-blue-600 transition-colors">
+                          {category}
+                        </span>
+                        <span className="text-[10px] font-bold text-slate-900">{Math.round(score * 100)}%</span>
                       </div>
-                    );
-                  })}
-                </div>
+                      <div className="relative h-2 bg-slate-100 rounded-full overflow-hidden">
+                        <div
+                          className={`absolute top-0 left-0 h-full rounded-full transition-all duration-1000 ease-out ${score > 0.8 ? 'bg-emerald-500' :
+                            score > 0.5 ? 'bg-blue-600' :
+                              'bg-slate-400'
+                            }`}
+                          style={{ width: `${score * 100}%` }}
+                        />
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             </div>
 
-            {/* Preferences Slider Overhaul - Hidden in Brief Mode */}
+            {/* User Preferences */}
             {!isBrief && (
-              <div className="bg-slate-900 rounded-[2rem] p-8 text-white shadow-2xl relative overflow-hidden group/prefs">
-                <div className="absolute bottom-0 right-0 w-64 h-64 bg-blue-600/10 rounded-full -mb-32 -mr-32 blur-3xl group-hover/prefs:bg-blue-600/20 transition-colors duration-1000" />
-
-                <div className="relative">
-                  <div className="flex justify-between items-start mb-8">
-                    <div>
-                      <h3 className="text-xl font-black tracking-tight flex items-center gap-2">
-                        <Star className="w-6 h-6 text-yellow-500" />
-                        Interest Trajectories
-                      </h3>
-                      <p className="text-sm text-slate-400 font-medium mt-1">Self-stated preferences for recommendation targeting</p>
-                    </div>
-                    {!isSelf && (
-                      <span className="px-3 py-1 bg-white/5 border border-white/10 rounded-lg text-[10px] font-black uppercase tracking-widest text-slate-500">
-                        ReadOnly
-                      </span>
-                    )}
+              <div className="bg-white rounded-2xl p-8 shadow-sm border border-slate-200">
+                <div className="flex justify-between items-center mb-8 pb-4 border-b border-slate-100">
+                  <div>
+                    <h3 className="text-lg font-bold text-slate-900 tracking-tight flex items-center gap-2">
+                      <Star className="w-5 h-5 text-amber-500" />
+                      Individual Preferences
+                    </h3>
+                    <p className="text-xs text-slate-500 font-medium mt-1">Personal interest level in different issue categories</p>
                   </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    {categories.map((c) => (
-                      <div key={c} className="bg-white/5 border border-white/10 rounded-2xl p-4 hover:bg-white/10 transition-colors group/pitem">
-                        <div className="flex items-center justify-between mb-3">
-                          <span className="text-[10px] font-black uppercase tracking-widest text-slate-300">{c}</span>
-                          <span className="text-xs font-black text-blue-400">{Math.round((editablePrefs[c] ?? 0.5) * 100)}%</span>
-                        </div>
-                        <input
-                          type="range"
-                          min="0"
-                          max="1"
-                          step="0.05"
-                          disabled={!isSelf || savingPrefs}
-                          value={editablePrefs[c] ?? 0.5}
-                          onChange={(e) => {
-                            const next = { ...editablePrefs, [c]: Number(e.target.value) };
-                            dev.preferences = next;
-                            setProfile({ ...profile, profile: { ...dev } });
-                          }}
-                          onMouseUp={() => savePreferences(dev.preferences)}
-                          className="w-full accent-blue-500 h-1 rounded-full cursor-pointer appearance-none bg-white/10"
-                        />
-                      </div>
-                    ))}
-                  </div>
-                  {isSelf && (
-                    <div className="mt-8 flex items-center gap-3 p-4 bg-blue-600/10 border border-blue-500/20 rounded-2xl">
-                      <div className="w-8 h-8 bg-blue-600 rounded-xl flex items-center justify-center text-white font-black text-xs">!</div>
-                      <p className="text-xs text-blue-200 font-medium">Your preferences influence which expert teams you are recommended to join. Adjusting these helps balance your workload with tasks you find interesting.</p>
-                    </div>
+                  {!isSelf && (
+                    <span className="px-2 py-0.5 bg-slate-50 border border-slate-200 rounded text-[9px] font-bold uppercase tracking-widest text-slate-400">
+                      View Only
+                    </span>
                   )}
                 </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  {categories.map((c) => (
+                    <div key={c} className="bg-slate-50 border border-slate-200 rounded-xl p-4 hover:border-blue-200 transition-colors group">
+                      <div className="flex items-center justify-between mb-3">
+                        <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500">{c}</span>
+                        <span className="text-[10px] font-bold text-blue-600">{Math.round((editablePrefs[c] ?? 0.5) * 100)}%</span>
+                      </div>
+                      <input
+                        type="range"
+                        min="0"
+                        max="1"
+                        step="0.05"
+                        disabled={!isSelf || savingPrefs}
+                        value={editablePrefs[c] ?? 0.5}
+                        onChange={(e) => {
+                          const next = { ...editablePrefs, [c]: Number(e.target.value) };
+                          dev.preferences = next;
+                          setProfile({ ...profile, profile: { ...dev } });
+                        }}
+                        onMouseUp={() => savePreferences(dev.preferences)}
+                        className="w-full h-1 bg-slate-200 rounded-full appearance-none cursor-pointer accent-blue-600"
+                      />
+                    </div>
+                  ))}
+                </div>
+
+                {isSelf && (
+                  <div className="mt-8 flex items-start gap-3 p-4 bg-blue-50 border border-blue-100 rounded-xl">
+                    <AlertCircle className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
+                    <p className="text-xs text-blue-800 font-medium leading-relaxed">
+                      Your preferences help the Project Manager understand which tasks you find most engaging. This balances business needs with personal interests.
+                    </p>
+                  </div>
+                )}
               </div>
             )}
           </div>
 
-          {/* Right Column: Stats & Issue Activity */}
+          {/* Right Column: Statistics */}
           <div className="lg:col-span-4 space-y-8">
-
-            {/* Quick Summary Stats */}
-            <div className="bg-white border border-slate-100 rounded-[2rem] p-6 shadow-sm overflow-hidden relative">
-              <div className="absolute top-0 right-0 p-4">
-                <div className="w-12 h-12 bg-emerald-50 rounded-2xl flex items-center justify-center">
-                  <FileCheck className="w-6 h-6 text-emerald-600" />
+            <div className="bg-white rounded-2xl p-8 shadow-sm border border-slate-200 relative overflow-hidden group">
+              <div className="flex items-center gap-3 mb-8 pb-4 border-b border-slate-100">
+                <div className="w-8 h-8 bg-blue-50 text-blue-600 rounded-lg flex items-center justify-center">
+                  <FileCheck size={18} />
                 </div>
+                <h3 className="text-sm font-bold text-slate-900 uppercase tracking-widest">Efficiency</h3>
               </div>
-              <h4 className="text-xs font-black uppercase tracking-widest text-slate-400 mb-6">Total Solutions</h4>
-              <div className="flex items-end gap-2 mb-2">
-                <span className="text-5xl font-black text-slate-900 tracking-tighter">
+
+              <div className="flex items-baseline gap-2 mb-8">
+                <span className="text-5xl font-bold text-slate-900 tracking-tighter">
                   {Object.values(dev.jiraIssuesSolved || {}).reduce((a, b) => a + b, 0)}
                 </span>
-                <span className="text-sm font-black text-slate-400 mb-2">Verified Tasks</span>
+                <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Issues Solved</span>
               </div>
-              <div className="flex gap-2">
-                <div className="flex-1 bg-slate-50 rounded-xl p-3 border border-slate-100 text-center">
-                  <p className="text-[10px] font-black uppercase text-slate-400 mb-1 tracking-widest">Commits</p>
-                  <p className="text-lg font-black text-slate-800">
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="bg-slate-50 rounded-xl p-4 border border-slate-100">
+                  <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1">Commits</p>
+                  <p className="text-xl font-bold text-slate-900">
                     {Object.values(dev.githubCommits || {}).reduce((a, b) => a + b, 0)}
                   </p>
                 </div>
-                <div className="flex-1 bg-slate-50 rounded-xl p-3 border border-slate-100 text-center">
-                  <p className="text-[10px] font-black uppercase text-slate-400 mb-1 tracking-widest">Efficiency</p>
-                  <p className="text-lg font-black text-slate-800">
+                <div className="bg-slate-50 rounded-xl p-4 border border-slate-100">
+                  <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1">Score</p>
+                  <p className="text-xl font-bold text-slate-900">
                     {dev.efficiency ? Math.round(dev.efficiency * 100) : '94'}%
                   </p>
                 </div>
               </div>
             </div>
-
-            {/* Removed Issue Interaction Area as per user request to solely use notification modal */}
-
           </div>
+
         </div>
       </div>
     </div>
@@ -447,7 +429,7 @@ const DeveloperProfileView = ({
 
   if (isModal) {
     return (
-      <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-[200] p-4 overflow-y-auto animate-in fade-in duration-300">
+      <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-[10001] p-4 overflow-y-auto animate-in fade-in duration-300">
         {content}
       </div>
     );

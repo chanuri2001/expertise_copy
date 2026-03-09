@@ -88,6 +88,8 @@ class DeveloperProfileIn(BaseModel):
     expertise: ExpertiseScores
     jiraIssuesSolved: CategoryCounts
     githubCommits: CategoryCounts
+    githubPRs: Optional[CategoryCounts] = None
+    githubReviews: Optional[CategoryCounts] = None
     preferences: Optional[CategoryPreferences] = None
     workHistory: Optional[List[WorkHistoryItem]] = None
     pendingIssues: Optional[Dict[str, List[PendingIssue]]] = None
@@ -98,6 +100,8 @@ class DeveloperProfile(DeveloperProfileIn):
     id: Optional[str] = None
     recommendation_reason: Optional[str] = None
     pending_count: Optional[int] = None
+    workload_score: float = 0.0
+    capacity_percentage: int = 100
 
 
 class UserPublic(BaseModel):
@@ -183,6 +187,8 @@ class Issue(BaseModel):
     submittedByName: Optional[str] = None
     assignedTo: Optional[EmailStr] = None  # Expert assigned to fix
     assignedToName: Optional[str] = None
+    assignedToCapacity: Optional[int] = None # Current capacity of assigned expert
+    assignedToStatus: Optional[str] = None # Current status (Active/Busy) of assigned expert
     createdAt: str
     assignedAt: Optional[str] = None
     resolvedAt: Optional[str] = None

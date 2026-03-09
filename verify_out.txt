@@ -1,0 +1,107 @@
+﻿python : Traceback 
+(most recent call 
+last):
+At line:1 char:1
++ python services/exper
+tise_service/scripts/ve
+rify_database.py 2>&1 
+| O ...
++ ~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo     
+         : NotSpecifi  
+  ed: (Traceback (mo   
+ st recent call las    
+t)::String) [], Re    
+moteException
+    + FullyQualifiedEr 
+   rorId : NativeComm  
+  andError
+ 
+  File 
+"C:\Users\Chanuri Amara
+singhe\Desktop\expertis
+e_recommend\AgileSense-
+AI\services\expertise_s
+ervice\scripts\verify_d
+atabase.py", line 46, 
+in verify_database
+    print("   \u2713 
+MongoDB connection 
+successful!")
+  File "C:\Program File
+s\Python311\Lib\encodin
+gs\cp1252.py", line 
+19, in encode
+    return codecs.charm
+ap_encode(input,self.er
+rors,encoding_table)[0]
+           ^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 
+'charmap' codec can't 
+encode character 
+'\u2713' in position 
+3: character maps to 
+<undefined>
+
+During handling of the 
+above exception, 
+another exception 
+occurred:
+
+Traceback (most recent 
+call last):
+  File 
+"C:\Users\Chanuri Amara
+singhe\Desktop\expertis
+e_recommend\AgileSense-
+AI\services\expertise_s
+ervice\scripts\verify_d
+atabase.py", line 154, 
+in <module>
+    verify_database()
+  File 
+"C:\Users\Chanuri Amara
+singhe\Desktop\expertis
+e_recommend\AgileSense-
+AI\services\expertise_s
+ervice\scripts\verify_d
+atabase.py", line 50, 
+in verify_database
+    print(f"   \u2717 
+MongoDB connection 
+failed: {e}")
+  File "C:\Program File
+s\Python311\Lib\encodin
+gs\cp1252.py", line 
+19, in encode
+    return codecs.charm
+ap_encode(input,self.er
+rors,encoding_table)[0]
+           ^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 
+'charmap' codec can't 
+encode character 
+'\u2717' in position 
+3: character maps to 
+<undefined>
+============================================================
+MongoDB Database Verification
+============================================================
+
+1. Configuration Check
+------------------------------------------------------------
+   MongoDB URI: mongodb+srv://Chanuri:Chanuri123@cluster0.sxhh5pv.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0
+   Database Name: expertise
+   Collection Name: developer_profiles
+
+2. Connection Test
+------------------------------------------------------------
+
+
+Error during verification: 'charmap' codec can't encode character '\u2717' in position 3: character maps to <undefined>

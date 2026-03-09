@@ -1,5 +1,5 @@
 from typing import Dict, List, Optional
-from datetime import datetime
+from datetime import datetime, timedelta
 import hashlib
 import math
 import random
@@ -131,14 +131,31 @@ def predict_issue(req: IssuePredictionRequest) -> IssuePredictionResponse:
 def recommend_developers_for_category(category: str, top_n: int = 3) -> RecommendationResponse:
     return recommend_developers_for_category_seeded(category, top_n=top_n, seed=None)
 
+def _calculate_workload(dev: DeveloperProfile) -> float:
+    """Calculate professional workload score based on issue priorities."""
+    if not dev.pendingIssues:
+        return 0.0
+    
+    points = {
+        "critical": 5.0,
+        "high": 3.0,
+        "medium": 1.5,
+        "low": 0.5
+    }
+    
+    total_points = 0.0
+    for category_issues in dev.pendingIssues.values():
+        for issue in category_issues:
+            # Handle both dict and object
+            priority = getattr(issue, "priority", "medium").lower() if not isinstance(issue, dict) else issue.get("priority", "medium").lower()
+            total_points += points.get(priority, 1.5)
+    
+    return total_points
+
 
 def recommend_developers_for_category_seeded(category: str, top_n: int = 3, seed: Optional[str] = None) -> RecommendationResponse:
     """
-    Recommend developers using a blended score:
-    - measured expertise + past activity
-    - self-stated preference for the category
-    - load balancing to avoid always picking the same top 3
-
+    Recommend developers using a blended score.
     The final selection uses weighted sampling from the top pool for variety.
     """
     devs: List[DeveloperProfile] = [d for d in list_developers() if getattr(d, "role", "developer") == "developer"]
@@ -156,19 +173,85 @@ def recommend_developers_for_category_seeded(category: str, top_n: int = 3, seed
 
     # We want 2 based on history/expertise, 1 based on preference
 
-    # Sort primarily by history/expertise (ignoring preference)
+    def _get_recency_score(items: List, days: int = 30) -> float:
+        """Calculate a multiplier based on how many items occurred in the last N days."""
+        if not items:
+            return 0.0
+        now = datetime.now()
+        recent_count = 0
+        for item in items:
+            created_at = getattr(item, "createdAt", None) or getattr(item, "resolvedAt", None)
+            if not created_at: continue
+            try:
+                item_date = datetime.fromisoformat(created_at.replace("Z", "+00:00"))
+                if (now - item_date.replace(tzinfo=None)).days <= days:
+                    recent_count += 1
+            except Exception:
+                continue
+        return _saturating_activity(recent_count)
+
+    # Sort primarily by history/expertise
     def score_history(dev: DeveloperProfile) -> float:
         expertise_score = float(getattr(dev.expertise, category, 0.0) or 0.0)
         jira_count = int(getattr(dev.jiraIssuesSolved, category, 0) or 0)
-        gh_count = int(getattr(dev.githubCommits, category, 0) or 0)
-        wh_count = sum(1 for item in (dev.workHistory or []) if getattr(item, "category", None) == category)
-
-        activity_score = _saturating_activity(jira_count + gh_count + wh_count)
-        base = (0.70 * expertise_score) + (0.30 * activity_score)
+        gh_commits = int(getattr(dev.githubCommits, category, 0) or 0)
         
-        pending = _pending_total(dev)
-        load_penalty = 1.0 / (1.0 + (pending / 5.0))
-        return max(0.0, base * load_penalty)
+        # New: weighted GitHub professional activities
+        gh_prs = int(getattr(dev.githubPRs, category, 0) if dev.githubPRs else 0)
+        gh_reviews = int(getattr(dev.githubReviews, category, 0) if dev.githubReviews else 0)
+        
+        # PRs are weighted 5x and Reviews 3x more than simple commits
+        total_gh_effort = (gh_commits * 1.0) + (gh_prs * 5.0) + (gh_reviews * 3.0)
+        
+        # 1. Base Activity Score
+        wh_items = [item for item in (dev.workHistory or []) if getattr(item, "category", None) == category]
+        recent_wh_score = _get_recency_score(wh_items, days=30)
+        
+        # 2. Priority Weighting from Resolved Issues
+        priority_bonus = 0.0
+        resolved_category_issues = []
+        if dev.resolvedIssues and category in dev.resolvedIssues:
+            resolved_category_issues = dev.resolvedIssues[category]
+            for ri in resolved_category_issues:
+                # Critical/High issues give more weight than low/medium
+                prio = getattr(ri, "priority", "medium").lower()
+                if prio == "critical": priority_bonus += 0.5
+                elif prio == "high": priority_bonus += 0.2
+                else: priority_bonus += 0.05
+        
+        recent_resolved_score = _get_recency_score(resolved_category_issues, days=30)
+        
+        # Use total_gh_effort for activity calculation
+        activity_score = _saturating_activity(jira_count + total_gh_effort + len(wh_items))
+        
+        # Weighted Blend: 
+        # 50% Base Expertise
+        # 20% Historical Activity
+        # 20% Recency (Recent work history + Recent resolutions)
+        # 10% Priority Bonus
+        base = (0.50 * expertise_score) + \
+               (0.20 * activity_score) + \
+               (0.20 * (recent_wh_score + recent_resolved_score) / 2.0) + \
+               (0.10 * min(1.0, priority_bonus))
+        
+        # 3. Load Balancing (Professional Weighted Penalty)
+        workload = _calculate_workload(dev)
+        # 0 points -> 1.0x, 5 pts (1 Critical) -> 0.5x, 10 pts -> 0.25x
+        load_penalty = 1.0 / (1.0 + (workload / 5.0))
+        
+        # 4. Auto-Status & Status Multiplier
+        status_mult = 1.0
+        dev_status = getattr(dev, "status", "Active").lower()
+        
+        # Professional Rule: If workload > 8 points, developer is considered "Busy" automatically
+        if workload >= 8.0:
+            dev_status = "busy"
+            status_mult = 0.3 # Stronger penalty for being officially overloaded
+        
+        if dev_status == "busy": status_mult = min(status_mult, 0.4)
+        elif dev_status == "off duty": status_mult = 0.0
+        
+        return max(0.0, base * load_penalty * status_mult)
 
     # Sort primarily by preference
     def score_preference(dev: DeveloperProfile) -> float:
@@ -200,8 +283,13 @@ def recommend_developers_for_category_seeded(category: str, top_n: int = 3, seed
         dev.pending_count = _pending_total(dev)
         pref_selected.append(dev)
 
-    # Combine them
+    # Combine and inject workload metadata for UI
     selected = history_selected + pref_selected
+    for dev in selected:
+        workload = _calculate_workload(dev)
+        dev.workload_score = workload
+        # Capacity formula: 100% at 0 pts, 0% at 10 pts (limit)
+        dev.capacity_percentage = max(0, int(100 - (workload * 10)))
 
     return RecommendationResponse(category=category, developers=selected)
 
@@ -235,7 +323,8 @@ def register_user(req: RegisterRequest) -> AuthResponse:
 
 
 def login_user(req: LoginRequest) -> AuthResponse:
-    user_doc = get_user_by_email(req.email.lower())
+    email = req.email.lower().strip()
+    user_doc = get_user_by_email(email)
     if not user_doc:
         raise ValueError("Invalid email or password")
     if not verify_password(req.password, user_doc.get("passwordHash", "")):
@@ -278,6 +367,8 @@ def create_and_predict_issue(req: IssueCreateRequest) -> Issue:
             "githubCommits": getattr(dev.githubCommits, category, 0),
             "recommendation_reason": dev.recommendation_reason,
             "pending_count": dev.pending_count,
+            "workload_score": dev.workload_score,
+            "capacity_percentage": dev.capacity_percentage,
         }
         for dev in rec_response.developers
     ]
@@ -304,6 +395,20 @@ def get_all_issues(status: str = None, page: int = 1, limit: int = 50) -> IssueL
     """Get all issues for Project Manager dashboard with pagination."""
     skip = (page - 1) * limit
     issues, total = list_all_issues(status, skip=skip, limit=limit)
+    
+    # Enrich issues with current capacity of assigned developer
+    for issue in issues:
+        if issue.assignedTo:
+            dev = get_developer_by_email(issue.assignedTo.lower())
+            if dev:
+                workload = _calculate_workload(dev)
+                issue.assignedToCapacity = max(0, int(100 - (workload * 10)))
+                # Auto-Busy logic: if workload >= 8, they are Busy
+                current_status = getattr(dev, "status", "Active")
+                if workload >= 8.0:
+                    current_status = "Busy"
+                issue.assignedToStatus = current_status
+                
     return IssueListResponse(issues=issues, total=total)
 
 
@@ -375,6 +480,16 @@ def assign_issue_from_dashboard(req: IssueAssignRequest) -> Issue:
         related_issue_id=issue.id
     )
 
+    # Notify issue submitter
+    if getattr(issue, 'submittedBy', None):
+        create_notification(
+            user_email=issue.submittedBy,
+            title="Issue Assigned to Expert",
+            message=f"Your issue '{issue.title}' has been assigned to {req.developerName} by the Project Manager.",
+            type="assignment",
+            related_issue_id=issue.id
+        )
+
     return issue
 
 
@@ -412,7 +527,8 @@ def mark_issue_complete(issue_id: str, developer_email: str, resolution_note: Op
         create_notification(
             user_email=issue.submittedBy,
             title="Issue Resolved",
-            message=f"Your issue '{issue.title}' was resolved by {developer_email}.",
+            message=f"Great news! Your issue '{issue.title}' was resolved by {developer_email}. " + 
+                    (f"Resolution Note: {resolution_note}" if resolution_note else "No additional notes were provided."),
             type="resolution",
             related_issue_id=issue.id
         )
@@ -447,11 +563,68 @@ def get_system_config() -> Dict:
     return {
         "categories": [
             "API", "Authentication", "Database", "DevOps", 
-            "Documentation", "Performance", "Security", "Testing", "UI"
+            "Documentation", "General Logic", "Performance", "Security", "Testing", "UI"
         ],
         "organization": "AgileSense AI",
         "version": "1.0.0",
         "status": "operational"
+    }
+
+
+def get_system_analytics() -> Dict:
+    """Calculate aggregate statistics for the manager dashboard."""
+    all_devs = list_developers()
+    devs = [d for d in all_devs if getattr(d, "role", "developer") == "developer"]
+    
+    issues_list, _ = list_all_issues(limit=1000) # Get a large sample
+    
+    # 1. Category Distribution
+    categories = get_system_config()["categories"]
+    category_dist = {cat: 0 for cat in categories}
+    for issue in issues_list:
+        cat = getattr(issue, "category", None)
+        if cat in category_dist:
+            category_dist[cat] += 1
+            
+    # 2. Resolution Velocity (Last 7 days)
+    velocity = {}
+    now = datetime.now()
+    for i in range(7):
+        date_str = (now - timedelta(days=i)).strftime("%Y-%m-%d")
+        velocity[date_str] = 0
+        
+    for issue in issues_list:
+        status = getattr(issue, "status", None)
+        resolved_at = getattr(issue, "resolvedAt", None)
+        if status == "resolved" and resolved_at:
+            try:
+                res_date = datetime.fromisoformat(str(resolved_at).split("T")[0]).strftime("%Y-%m-%d")
+                if res_date in velocity:
+                    velocity[res_date] += 1
+            except Exception:
+                continue
+    
+    # Convert velocity to a sorted list for the chart
+    sorted_velocity = [{"date": k, "count": v} for k, v in sorted(velocity.items())]
+    
+    # 3. Team Expertise Matrix (Aggregated)
+    team_matrix = {cat: 0.0 for cat in categories}
+    if devs:
+        for dev in devs:
+            expertise = getattr(dev, "expertise", None)
+            if not expertise: continue
+            for cat in categories:
+                score = getattr(expertise, cat, 0.0) or 0.0
+                team_matrix[cat] += float(score)
+        
+        # average
+        for cat in team_matrix:
+            team_matrix[cat] = round(team_matrix[cat] / len(devs), 2)
+
+    return {
+        "categoryDistribution": [{"name": k, "value": v} for k, v in category_dist.items() if v > 0],
+        "resolutionVelocity": sorted_velocity,
+        "teamExpertiseMatrix": [{"subject": k, "A": v, "fullMark": 1.0} for k, v in team_matrix.items()]
     }
 
 

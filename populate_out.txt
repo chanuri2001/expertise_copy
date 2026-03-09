@@ -1,0 +1,11 @@
+﻿Adding sample developer profiles to MongoDB...
+------------------------------------------------------------
+[OK] Added/Updated: Alice Perera (alice@example.com)
+[OK] Added/Updated: Bob Smith (bob@example.com)
+[OK] Added/Updated: Charlie Brown (charlie@example.com)
+[OK] Added/Updated: Diana Prince (diana@example.com)
+[OK] Added/Updated: Edward Norton (edward@example.com)
+------------------------------------------------------------
+Successfully populated 5 developer profiles!
+
+You can now test the expertise recommendation feature.

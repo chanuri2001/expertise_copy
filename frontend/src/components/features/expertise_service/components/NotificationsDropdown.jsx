@@ -20,7 +20,7 @@ const NotificationsDropdown = ({ onNotificationClick }) => {
       const token = getAuthToken();
       const res = await axios.get(`${API_BASE_URL}/api/expertise/notifications`, {
         headers: { Authorization: `Bearer ${token}` },
-        params: { unread_only: false } // Get all, but we'll show unread differently
+        params: { unread_only: false }
       });
       setNotifications(res.data || []);
     } catch (err) {
@@ -31,15 +31,17 @@ const NotificationsDropdown = ({ onNotificationClick }) => {
   };
 
   useEffect(() => {
-    if (currentUser) {
+    if (currentUser?.email) {
       fetchNotifications();
-      // Poll every 15 seconds
-      const interval = setInterval(fetchNotifications, 15000);
+      const interval = setInterval(() => {
+        if (document.visibilityState === 'visible') {
+          fetchNotifications();
+        }
+      }, 30000);
       return () => clearInterval(interval);
     }
-  }, [currentUser]);
+  }, [currentUser?.email]);
 
-  // Click outside to close
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
@@ -51,13 +53,12 @@ const NotificationsDropdown = ({ onNotificationClick }) => {
   }, []);
 
   const handleMarkAsRead = async (id, e) => {
-    if (e) e.stopPropagation(); // prevent closing if clicking specifically the dot
+    if (e) e.stopPropagation();
     try {
       const token = getAuthToken();
       await axios.put(`${API_BASE_URL}/api/expertise/notifications/${id}/read`, null, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      // Optimistically update
       setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
     } catch (err) {
       console.error('Failed to mark read', err);
@@ -68,19 +69,9 @@ const NotificationsDropdown = ({ onNotificationClick }) => {
     if (!notif.read) {
       handleMarkAsRead(notif.id);
     }
-
-    // Developer diagnostics:
-    if (!notif.relatedIssueId) {
-      alert(`[Diagnostics]: This specific notification (${notif.type}) has NO Issue ID attached in the database.`);
-      return;
+    if (notif.relatedIssueId && typeof onNotificationClick === 'function') {
+      onNotificationClick(notif.relatedIssueId);
     }
-
-    if (typeof onNotificationClick !== 'function') {
-      alert(`[Diagnostics]: The onNotificationClick prop is missing! Type: ${typeof onNotificationClick}`);
-      return;
-    }
-
-    onNotificationClick(notif.relatedIssueId);
     setIsOpen(false);
   };
 
@@ -92,85 +83,107 @@ const NotificationsDropdown = ({ onNotificationClick }) => {
     <div className="relative" ref={dropdownRef}>
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="relative p-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-full transition-colors"
+        className="relative p-2 text-slate-500 hover:text-blue-600 hover:bg-blue-50/50 rounded-xl transition-all"
         aria-label="Notifications"
       >
-        <Bell className="w-6 h-6" />
+        <Bell size={20} />
         {unreadCount > 0 && (
-          <span className="absolute top-1 right-1 flex items-center justify-center w-4 h-4 text-[10px] font-bold text-white bg-red-500 border-2 border-white rounded-full">
-            {unreadCount > 9 ? '9+' : unreadCount}
-          </span>
+          <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-blue-600 border-2 border-white rounded-full animate-pulse" />
         )}
       </button>
 
       {isOpen && (
-        <div className="absolute right-0 mt-2 w-80 bg-white rounded-xl shadow-lg border border-gray-200 z-50 overflow-hidden transform origin-top-right transition-all">
-          <div className="bg-gray-50 border-b border-gray-200 px-4 py-3 flex justify-between items-center">
-            <h3 className="font-semibold text-gray-900">Notifications</h3>
+        <div className="absolute right-0 mt-3 w-80 bg-white rounded-2xl shadow-xl shadow-slate-200/50 border border-slate-200 z-[100] overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+          <div className="bg-slate-50/50 border-b border-slate-100 px-5 py-4 flex justify-between items-center">
+            <h3 className="text-xs font-bold text-slate-800 uppercase tracking-widest">Notifications</h3>
             {unreadCount > 0 && (
-              <span className="text-xs bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full font-medium">
-                {unreadCount} unread
+              <span className="text-[10px] bg-blue-600 text-white px-2 py-0.5 rounded-full font-bold">
+                {unreadCount} New
               </span>
             )}
           </div>
 
           <div className="max-h-96 overflow-y-auto">
             {loading && notifications.length === 0 ? (
-              <div className="p-4 text-center text-sm text-gray-500">Loading...</div>
+              <div className="p-8 text-center text-[11px] text-slate-400 font-medium animate-pulse uppercase tracking-widest">Synchronizing...</div>
             ) : notifications.length === 0 ? (
-              <div className="p-6 text-center text-gray-500 flex flex-col items-center">
-                <Bell className="w-8 h-8 mb-2 text-gray-300" />
-                <p className="text-sm">You have no notifications</p>
+              <div className="p-10 text-center flex flex-col items-center">
+                <Bell size={32} className="text-slate-100 mb-3" />
+                <p className="text-[11px] text-slate-400 font-bold uppercase tracking-widest">Inbox Zero</p>
+                <p className="text-[10px] text-slate-300 mt-1">Check back later for updates</p>
               </div>
             ) : (
-              <div className="divide-y divide-gray-100">
-                {notifications.map(notif => (
-                  <div
-                    key={notif.id}
-                    onClick={() => handleNotifClick(notif)}
-                    className={`p-4 hover:bg-gray-50 transition-colors cursor-pointer ${!notif.read ? 'bg-blue-50/50' : 'opacity-70'}`}
-                  >
-                    <div className="flex gap-3">
-                      <div className="flex-shrink-0 mt-1">
-                        {notif.type === 'assignment' ? (
-                          <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600">
-                            <Clock className="w-4 h-4" />
+              <div className="divide-y divide-slate-50">
+                {notifications.map(notif => {
+                  const isAssignment = notif.type === 'assignment';
+                  const isResolution = notif.type === 'resolution';
+
+                  return (
+                    <div
+                      key={notif.id}
+                      onClick={() => handleNotifClick(notif)}
+                      className={`p-4 hover:bg-slate-50 transition-colors cursor-pointer relative group ${!notif.read
+                          ? (isAssignment ? 'bg-blue-50/40' : isResolution ? 'bg-emerald-50/40' : 'bg-slate-50/40')
+                          : ''
+                        }`}
+                    >
+                      <div className="flex gap-4">
+                        <div className="flex-shrink-0">
+                          {isAssignment ? (
+                            <div className="w-10 h-10 rounded-xl bg-blue-100 flex items-center justify-center text-blue-600 shadow-sm border border-blue-200/50">
+                              <Bell size={18} />
+                            </div>
+                          ) : isResolution ? (
+                            <div className="w-10 h-10 rounded-xl bg-emerald-100 flex items-center justify-center text-emerald-600 shadow-sm border border-emerald-200/50">
+                              <CheckCircle size={18} />
+                            </div>
+                          ) : (
+                            <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center text-slate-600 shadow-sm border border-slate-200/50">
+                              <Bell size={18} />
+                            </div>
+                          )}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between mb-1">
+                            <span className={`text-[8px] font-black uppercase tracking-[0.2em] px-2 py-0.5 rounded-md border ${isAssignment ? 'bg-blue-500/10 text-blue-600 border-blue-500/20' :
+                                isResolution ? 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20' :
+                                  'bg-slate-500/10 text-slate-600 border-slate-500/20'
+                              }`}>
+                              {notif.type || 'SYSTEM'}
+                            </span>
                           </div>
-                        ) : notif.type === 'resolution' ? (
-                          <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center text-green-600">
-                            <CheckCircle className="w-4 h-4" />
+                          <p className={`text-xs ${!notif.read ? 'font-bold text-slate-900' : 'font-semibold text-slate-600'}`}>
+                            {notif.title}
+                          </p>
+                          <p className="text-[11px] text-slate-500 mt-1 line-clamp-2 leading-relaxed">
+                            {notif.message}
+                          </p>
+                          <div className="flex items-center gap-2 mt-2">
+                            <span className="text-[9px] text-slate-400 font-bold uppercase tracking-tight">
+                              {notif.createdAt && !isNaN(new Date(notif.createdAt))
+                                ? new Date(notif.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+                                : 'N/A'
+                              }
+                            </span>
                           </div>
-                        ) : (
-                          <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-600">
-                            <Bell className="w-4 h-4" />
+                        </div>
+                        {!notif.read && (
+                          <div className="absolute top-4 right-4 flex-shrink-0">
+                            <div className={`w-2 h-2 rounded-full ${isAssignment ? 'bg-blue-500' : isResolution ? 'bg-emerald-500' : 'bg-slate-400'}`} />
                           </div>
                         )}
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <p className={`text-sm ${!notif.read ? 'font-semibold text-gray-900' : 'font-medium text-gray-800'}`}>
-                          {notif.title}
-                        </p>
-                        <p className="text-xs text-gray-600 mt-0.5 line-clamp-2">
-                          {notif.message}
-                        </p>
-                        <p className="text-[10px] text-gray-400 mt-1">
-                          {notif.createdAt && !isNaN(new Date(notif.createdAt)) ? new Date(notif.createdAt).toLocaleString() : 'N/A'}
-                        </p>
-                      </div>
-                      {!notif.read && (
-                        <div className="flex-shrink-0 flex items-start">
-                          <button
-                            onClick={(e) => handleMarkAsRead(notif.id, e)}
-                            className="w-2.5 h-2.5 bg-blue-600 rounded-full hover:bg-blue-800 transition-colors"
-                            title="Mark as read"
-                          />
-                        </div>
-                      )}
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
+          </div>
+
+          <div className="bg-slate-50/50 border-t border-slate-100 p-3 text-center">
+            <button className="text-[10px] font-bold text-blue-600 uppercase tracking-widest hover:text-blue-700 transition-colors">
+              Mark all as read
+            </button>
           </div>
         </div>
       )}

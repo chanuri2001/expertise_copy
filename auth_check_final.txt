@@ -1,0 +1,15 @@
+﻿Testing login for alex@gmail.com...
+Status Code: 401
+Response: {"detail":"Invalid email or password"}
+FAILED: Login failed with password 'password123'
+------------------------------
+Testing login for alex@gmail.com...
+Status Code: 401
+Response: {"detail":"Invalid email or password"}
+FAILED: Login failed with password '123456'
+------------------------------
+Testing login for alex@gmail.com...
+Status Code: 401
+Response: {"detail":"Invalid email or password"}
+FAILED: Login failed with password 'admin123'
+------------------------------

@@ -1,0 +1,67 @@
+﻿============================================================
+MongoDB Database Verification
+============================================================
+
+1. Configuration Check
+------------------------------------------------------------
+   MongoDB URI: mongodb+srv://Chanuri:Chanuri123@cluster0.sxhh5pv.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0
+   Database Name: expertise
+   Collection Name: developer_profiles
+
+2. Connection Test
+------------------------------------------------------------
+   [OK] MongoDB connection successful!
+
+3. Database Check
+------------------------------------------------------------
+   [OK] Database 'expertise' exists
+
+4. Collection Check
+------------------------------------------------------------
+   [OK] Collection 'developer_profiles' exists
+
+5. Data Count
+------------------------------------------------------------
+   Total documents in collection: 12
+   [OK] Data is saved in MongoDB!
+
+6. Developer Profiles
+------------------------------------------------------------
+   Found 12 developer profile(s):
+   - Alex (alex@gmail.com)
+     Pending issues: 0, Resolved issues: 1
+   - Harini (harini@gmail.com)
+     Pending issues: 5, Resolved issues: 3
+   - Admin PM (admin@gmail.com)
+     Pending issues: 0, Resolved issues: 0
+   - Tom (tom@gmail.com)
+     Pending issues: 0, Resolved issues: 1
+   - mark (mark@gmail.com)
+     Pending issues: 5, Resolved issues: 1
+   - natty (natty@gmail.com)
+     Pending issues: 0, Resolved issues: 0
+   - Developer One (dev@test.com)
+     Pending issues: 0, Resolved issues: 0
+   - Alice Perera (alice@example.com)
+     Pending issues: 2, Resolved issues: 0
+   - Bob Smith (bob@example.com)
+     Pending issues: 2, Resolved issues: 0
+   - Charlie Brown (charlie@example.com)
+     Pending issues: 3, Resolved issues: 0
+   - Diana Prince (diana@example.com)
+     Pending issues: 2, Resolved issues: 0
+   - Edward Norton (edward@example.com)
+     Pending issues: 2, Resolved issues: 0
+
+7. Sample Document
+------------------------------------------------------------
+   Sample document structure:
+   - Email: alex@gmail.com
+   - Name: Alex
+   - Has expertise: True
+   - Has pendingIssues: True
+   - Has resolvedIssues: True
+
+============================================================
+Verification Complete!
+============================================================

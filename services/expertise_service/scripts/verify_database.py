@@ -43,11 +43,11 @@ def verify_database():
         client = MongoClient(config.MONGODB_URI)
         # Try to ping the database
         client.admin.command('ping')
-        print("   ✓ MongoDB connection successful!")
+        print("   [OK] MongoDB connection successful!")
         db = client[config.MONGODB_DB_NAME]
         collection = db[config.MONGODB_COLLECTION_NAME]
     except Exception as e:
-        print(f"   ✗ MongoDB connection failed: {e}")
+        print(f"   [FAIL] MongoDB connection failed: {e}")
         print()
         print("   Troubleshooting:")
         print("   - Is MongoDB running? (check with: mongosh or docker-compose ps)")
@@ -62,7 +62,7 @@ def verify_database():
     try:
         db_names = client.list_database_names()
         if config.MONGODB_DB_NAME in db_names:
-            print(f"   ✓ Database '{config.MONGODB_DB_NAME}' exists")
+            print(f"   [OK] Database '{config.MONGODB_DB_NAME}' exists")
         else:
             print(f"   ⚠ Database '{config.MONGODB_DB_NAME}' not found")
             print("   (This is OK - database will be created on first insert)")
@@ -76,7 +76,7 @@ def verify_database():
     try:
         collections = db.list_collection_names()
         if config.MONGODB_COLLECTION_NAME in collections:
-            print(f"   ✓ Collection '{config.MONGODB_COLLECTION_NAME}' exists")
+            print(f"   [OK] Collection '{config.MONGODB_COLLECTION_NAME}' exists")
         else:
             print(f"   ⚠ Collection '{config.MONGODB_COLLECTION_NAME}' not found")
             print("   (This is OK - collection will be created on first insert)")
@@ -91,7 +91,7 @@ def verify_database():
         count = collection.count_documents({})
         print(f"   Total documents in collection: {count}")
         if count > 0:
-            print("   ✓ Data is saved in MongoDB!")
+            print("   [OK] Data is saved in MongoDB!")
         else:
             print("   ⚠ No documents found in collection")
             print("   Run populate_sample_profiles.py to add sample data")

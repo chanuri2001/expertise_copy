@@ -1,6 +1,7 @@
 import os
 from pathlib import Path
 from typing import List, Optional
+from datetime import datetime, timedelta
 from fastapi import Depends, FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -193,6 +194,16 @@ def upsert_developer_profile_endpoint(payload: DeveloperProfileIn) -> DeveloperP
 def get_config_endpoint():
     """Get system configuration including categories."""
     return service.get_system_config()
+
+
+@app.get("/api/expertise/analytics")
+def get_analytics_endpoint(user: UserPublic = Depends(require_manager)):
+    """Get aggregate analytics for the manager dashboard."""
+    try:
+        return service.get_system_analytics()
+    except Exception as e:
+        print(f"ERROR [API]: Analytics failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @app.get("/api/expertise/developers/{email}", response_model=DeveloperProfile)

@@ -1,0 +1,39 @@
+﻿python : INFO:     
+Started server process 
+[21864]
+At line:1 char:1
++ python -m uvicorn ser
+vices.expertise_service
+.api.main:app --port 
+8000 ...
++ ~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~
+~~
+    + CategoryInfo     
+         : NotSpecifi  
+  ed: (INFO:     Sta   
+ rted server proces    
+s [21864]:String)     
+[], RemoteExceptio    n
+    + FullyQualifiedEr 
+   rorId : NativeComm  
+  andError
+ 
+INFO:     Waiting for 
+application startup.
+INFO:     Application 
+startup complete.
+ERROR:    [Errno 
+10048] error while 
+attempting to bind on 
+address ('127.0.0.1', 
+8000): only one usage 
+of each socket address 
+(protocol/network 
+address/port) is 
+normally permitted
+INFO:     Waiting for 
+application shutdown.
+INFO:     Application 
+shutdown complete.

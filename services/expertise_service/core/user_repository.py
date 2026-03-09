@@ -37,7 +37,5 @@ def create_user(email: str, name: str, password_hash: str, role: str = "develope
 
 
 def get_user_by_email(email: str) -> Optional[dict]:
-    email = email.lower()
-    col = _get_users_collection()
-    return col.find_one({"email": email})
-
+    email = email.lower().strip()
+    return db_conn.get_collection("users").find_one({"email": email})

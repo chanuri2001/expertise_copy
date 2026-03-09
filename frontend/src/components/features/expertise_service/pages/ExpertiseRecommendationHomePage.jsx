@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Users, FileText, LayoutDashboard, ShieldCheck, CheckCircle, Clock, Search, AlertTriangle, ArrowRight, User, Eye, Lightbulb } from 'lucide-react';
+import { Users, FileText, LayoutDashboard, ShieldCheck, CheckCircle, Clock, Search, AlertTriangle, ArrowRight, User, Eye, Lightbulb, X, Brain } from 'lucide-react';
 import axios from 'axios';
 import DeveloperProfileView from '../components/DeveloperProfileView';
 import ProjectManagerDashboard from './ProjectManagerDashboard';
@@ -24,7 +24,7 @@ const ExpertiseRecommendationHomePage = ({ module }) => {
   const [assigningIssue, setAssigningIssue] = useState({});
   const [successMessage, setSuccessMessage] = useState('');
   const [lastCreatedIssue, setLastCreatedIssue] = useState(null);
-  const [viewingMissionId, setviewingMissionId] = useState(null);
+  const [viewingIssueId, setViewingIssueId] = useState(null);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [systemConfig, setSystemConfig] = useState({ categories: [], organization: 'AgileSense AI' });
 
@@ -37,7 +37,7 @@ const ExpertiseRecommendationHomePage = ({ module }) => {
 
   const fetchConfig = async () => {
     try {
-      const res = await axios.get(`${API_BASE_URL} /api/expertise / config`);
+      const res = await axios.get(`${API_BASE_URL}/api/expertise/config`);
       setSystemConfig(res.data);
     } catch (err) {
       console.error('Failed to fetch system config', err);
@@ -46,7 +46,7 @@ const ExpertiseRecommendationHomePage = ({ module }) => {
 
   const authHeaders = () => {
     const token = getAuthToken();
-    return token ? { Authorization: `Bearer ${token} ` } : {};
+    return token ? { Authorization: `Bearer ${token}` } : {};
   };
 
   const handleSubmit = async (e) => {
@@ -118,9 +118,8 @@ const ExpertiseRecommendationHomePage = ({ module }) => {
       setError('');
       setSuccessMessage('');
 
-      // Assign the actual created issue (updates main issue + developer pending issues)
       await axios.post(
-        `${API_BASE_URL} /api/expertise / issues / assign`,
+        `${API_BASE_URL}/api/expertise/issues/assign`,
         {
           issueId: lastCreatedIssue.id,
           developerEmail,
@@ -129,9 +128,7 @@ const ExpertiseRecommendationHomePage = ({ module }) => {
         { headers: authHeaders() }
       );
 
-      setSuccessMessage(`Issue assigned to ${developerName} !Check their profile to see it.`);
-
-      // Clear success message after 5 seconds
+      setSuccessMessage(`Issue assigned to ${developerName}! Check their profile to see it.`);
       setTimeout(() => setSuccessMessage(''), 5000);
     } catch (err) {
       setError(err.response?.data?.detail || 'Failed to Assign Mission. Please try again.');
@@ -144,327 +141,302 @@ const ExpertiseRecommendationHomePage = ({ module }) => {
 
   const handleNotificationClick = (issueId) => {
     console.log('DEBUG [Home]: Notification event received for:', issueId);
-
-    // Display the modal securely directly over the current tab
-    // We intentionally DO NOT switch tabs here, because switching to 'missions' 
-    // for a test user without a full profile renders an "Access Denied" empty page.
-    setviewingMissionId(issueId);
+    setViewingIssueId(issueId);
   };
 
   return (
-    <div className="p-6 space-y-6 min-h-screen bg-gray-50">
-      <div className="flex items-center justify-between mb-2">
-        <div className="flex items-center gap-3">
-          <Users className="text-blue-600" size={32} />
-          <div>
-            <h1 className="text-3xl font-black text-black">{module.name}</h1>
-            <p className="text-xs text-gray-600">Developer: {module.developer}</p>
+    <div className="min-h-screen bg-[#F9FAFB] text-slate-900 selection:bg-blue-100 italic-none">
+      {/* SaaS Navigation Header */}
+      <header className="bg-white border-b border-slate-200 sticky top-0 z-50">
+        <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center text-white shadow-lg shadow-blue-500/20">
+              <Brain size={24} />
+            </div>
+            <div>
+              <h1 className="text-xl font-bold tracking-tight text-slate-900">Expertise Recommendation System</h1>
+              <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">{systemConfig.organization || 'AgileSense AI'}</p>
+            </div>
           </div>
-        </div>
-      </div>
 
-      {/* Auth & Notifications (Global Header) */}
-      <div className="sticky top-0 z-40 pb-4 bg-gray-50/80 backdrop-blur-sm -mx-6 px-6 space-y-2">
-        <AuthPanel
-          onAuthChanged={(u) => setCurrentUser(u)}
-          onNotificationClick={handleNotificationClick}
-        />
-        {/* Temporary Debug Button */}
-        <div className="flex justify-end">
-          <button
-            onClick={() => {
-              // Prompt for an ID or just use a known test one if possible
-              const id = window.prompt("Enter Issue ID to test briefing (e.g. ISSUE-20260307-...)");
-              if (id) handleNotificationClick(id);
-            }}
-            className="text-[10px] font-bold text-blue-500 hover:underline"
-          >
-            [DEBUG: Test Mission Briefing Modal]
-          </button>
-        </div>
-      </div>
-
-      {/* Tabs */}
-      <div className="flex gap-2 border-b border-gray-200">
-        <button
-          onClick={() => setActiveTab('submit')}
-          className={`px - 4 py - 2 text - sm font - medium border - b - 2 transition - colors ${activeTab === 'submit'
-            ? 'border-blue-600 text-blue-600'
-            : 'border-transparent text-gray-500 hover:text-gray-700'
-            } `}
-        >
-          <FileText className="w-4 h-4 inline mr-2" />
-          Raise Mission
-        </button>
-        {!isManager && (
-          <button
-            onClick={() => setActiveTab('missions')}
-            className={`px - 4 py - 2 text - sm font - medium border - b - 2 transition - colors ${activeTab === 'missions'
-              ? 'border-blue-600 text-blue-600'
-              : 'border-transparent text-gray-500 hover:text-gray-700'
-              } `}
-          >
-            <ShieldCheck className="w-4 h-4 inline mr-2" />
-            My Missions
-          </button>
-        )}
-        {isManager && (
-          <button
-            onClick={() => setActiveTab('dashboard')}
-            className={`px - 4 py - 2 text - sm font - medium border - b - 2 transition - colors ${activeTab === 'dashboard'
-              ? 'border-blue-600 text-blue-600'
-              : 'border-transparent text-gray-500 hover:text-gray-700'
-              } `}
-          >
-            <LayoutDashboard className="w-4 h-4 inline mr-2" />
-            Project Manager Dashboard
-          </button>
-        )}
-      </div>
-
-      {activeTab === 'dashboard' ? (
-        <ProjectManagerDashboard refreshTrigger={refreshTrigger} />
-      ) : activeTab === 'missions' ? (
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-          <DeveloperProfileView
-            developerEmail={currentUser?.email}
-            isSubmitter={false}
-            isModal={false}
-            onClose={() => setActiveTab('submit')}
+          <AuthPanel
+            onAuthChanged={(u) => setCurrentUser(u)}
+            onNotificationClick={handleNotificationClick}
           />
         </div>
-      ) : (
-        <div className="space-y-6">
+      </header>
 
-          <form
-            onSubmit={handleSubmit}
-            className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 space-y-4 max-w-3xl"
+      <main className="max-w-7xl mx-auto px-6 py-10">
+        {/* Navigation Tabs */}
+        <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl mb-10 w-fit">
+          <button
+            onClick={() => setActiveTab('submit')}
+            className={`flex items-center gap-2 px-6 py-2.5 text-sm font-bold rounded-lg transition-all ${activeTab === 'submit'
+              ? 'bg-white text-blue-600 shadow-sm'
+              : 'text-slate-500 hover:text-slate-800'
+              }`}
           >
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Issue Title (optional)
-              </label>
-              <input
-                type="text"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder="Eg: API returns 500 error when updating User profile"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Mission Urgency (Priority)
-              </label>
-              <div className="flex gap-2">
-                {['low', 'medium', 'high', 'critical'].map((p) => (
-                  <button
-                    key={p}
-                    type="button"
-                    onClick={() => setPriority(p)}
-                    className={`flex - 1 py - 2 px - 3 rounded - lg text - xs font - black uppercase tracking - widest border transition - all ${priority === p
-                      ? p === 'critical' ? 'bg-red-600 border-red-600 text-white shadow-lg shadow-red-200' :
-                        p === 'high' ? 'bg-orange-500 border-orange-500 text-white shadow-lg shadow-orange-200' :
-                          p === 'medium' ? 'bg-blue-600 border-blue-600 text-white shadow-lg shadow-blue-200' :
-                            'bg-slate-900 border-slate-900 text-white shadow-lg shadow-slate-200'
-                      : 'bg-white border-gray-200 text-gray-400 hover:border-gray-300 hover:text-gray-600'
-                      } `}
-                  >
-                    {p}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Objective Description
-              </label>
-              <textarea
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                rows={5}
-                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder="Paste the detailed Jira Objective Description here..."
-              />
-            </div>
-
-
-            {error && <p className="text-sm text-red-600">{error}</p>}
-            {successMessage && (
-              <div className="bg-green-50 border border-green-200 rounded-lg p-3">
-                <p className="text-sm text-green-800 flex items-center gap-2">
-                  <CheckCircle className="w-4 h-4" />
-                  {successMessage}
-                </p>
-              </div>
-            )}
-
+            <FileText size={18} />
+            Raise Issue
+          </button>
+          {!isManager && (
             <button
-              type="submit"
-              disabled={loading}
-              className="inline-flex items-center px-4 py-2 rounded-md bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 disabled:opacity-60"
+              onClick={() => setActiveTab('missions')}
+              className={`flex items-center gap-2 px-6 py-2.5 text-sm font-bold rounded-lg transition-all ${activeTab === 'missions'
+                ? 'bg-white text-blue-600 shadow-sm'
+                : 'text-slate-500 hover:text-slate-800'
+                }`}
             >
-              {loading ? 'Analyzing...' : 'Predict & Recommend Experts'}
+              <User size={18} />
+              My Profile
             </button>
-          </form>
-
-          {predictedCategory && (
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 max-w-3xl space-y-3">
-              <div className="flex justify-between items-start">
-                <div>
-                  <p className="text-sm text-gray-500">Predicted category</p>
-                  <p className="text-xl font-semibold text-blue-700">{predictedCategory}</p>
-                </div>
-                {currentUser?.email && (
-                  <button
-                    onClick={() => setSubmitterEmailForProfile(currentUser.email)}
-                    className="inline-flex items-center px-3 py-2 rounded-md bg-green-600 text-white text-sm font-medium hover:bg-green-700 transition-colors"
-                  >
-                    <User className="w-4 h-4 mr-2" />
-                    View My Profile
-                  </button>
-                )}
-              </div>
-
-              <div>
-                <p className="text-sm font-medium text-gray-700 mb-2">
-                  Recommended developers for this issue
-                </p>
-
-                {recommendations.length === 0 ? (
-                  <p className="text-sm text-gray-500">
-                    No developer profiles found yet. Add profiles through the backend API to see
-                    recommendations.
-                  </p>
-                ) : (
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                    {recommendations.map((dev) => {
-                      // Support both full profile objects and lightweight recommendation summaries
-                      const expertiseScore = dev.expertiseScore !== undefined
-                        ? dev.expertiseScore
-                        : (dev.expertise?.[predictedCategory] ?? 0);
-
-                      const pendingCount = dev.pending_count || 0;
-                      const isOverloaded = pendingCount > 5;
-                      const isPreference = dev.recommendation_reason === 'preference';
-
-                      const totalSolutions = dev.expertiseScore !== undefined
-                        ? (dev.jiraIssuesSolved + dev.githubCommits)
-                        : (dev.jiraIssuesSolved?.[predictedCategory] || 0) + (dev.githubCommits?.[predictedCategory] || 0);
-
-                      const isAssigning = assigningIssue[dev.email] || false;
-
-                      return (
-                        <div
-                          key={dev.email}
-                          className="bg-white rounded-[2rem] p-6 border border-slate-100 shadow-sm hover:shadow-xl hover:shadow-blue-500/5 transition-all hover:-translate-y-1 group flex flex-col relative overflow-hidden h-full"
-                        >
-                          {/* Top accent */}
-                          <div className={`absolute top - 0 left - 0 w - full h - 1.5 ${isPreference ? 'bg-purple-500' : 'bg-blue-600'} `} />
-
-                          <div className="flex items-start justify-between mb-4">
-                            <div className="flex items-center gap-4">
-                              <div className={`w - 14 h - 14 rounded - 2xl flex items - center justify - center border transition - all duration - 500 ${isPreference
-                                ? 'bg-purple-50 border-purple-100 text-purple-600 group-hover:bg-purple-600 group-hover:text-white group-hover:rotate-6 shadow-purple-100'
-                                : 'bg-blue-50 border-blue-100 text-blue-600 group-hover:bg-blue-600 group-hover:text-white group-hover:rotate-6 shadow-blue-100'
-                                } `}>
-                                <User className="w-7 h-7" />
-                              </div>
-                              <div className="overflow-hidden">
-                                <h4 className="font-black text-slate-900 text-lg tracking-tight group-hover:text-blue-600 transition-colors truncate">{dev.name}</h4>
-                                <p className="text-[10px] text-slate-400 font-mono tracking-tighter uppercase truncate">{dev.email}</p>
-                              </div>
-                            </div>
-                          </div>
-
-                          {/* Technical Metrics - Only visible to managers */}
-                          {isManager && (
-                            <div className="grid grid-cols-2 gap-3 mb-6">
-                              <div className="bg-slate-50 p-3 rounded-2xl border border-slate-100 text-center flex flex-col justify-center">
-                                <p className="text-[9px] font-black uppercase text-slate-400 mb-1 tracking-widest">Mastery</p>
-                                <p className={`text - xl font - black ${(expertiseScore * 100) > 80 ? 'text-emerald-600' : 'text-slate-900'} `}>
-                                  {Math.round(expertiseScore * 100)}%
-                                </p>
-                              </div>
-                              <div className="bg-slate-50 p-3 rounded-2xl border border-slate-100 text-center flex flex-col justify-center">
-                                <p className="text-[9px] font-black uppercase text-slate-400 mb-1 tracking-widest">Active</p>
-                                <p className={`text - xl font - black ${isOverloaded ? 'text-orange-500' : 'text-slate-900'} `}>
-                                  {pendingCount}
-                                </p>
-                              </div>
-                            </div>
-                          )}
-
-                          {/* Historical Performance - Only visible to managers */}
-                          {isManager && (
-                            <div className="space-y-3 mb-6 flex-1">
-                              <div className="bg-white/50 p-4 rounded-2xl border border-slate-50 flex flex-col gap-2">
-                                <div className="flex justify-between items-center">
-                                  <span className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Historical Performance</span>
-                                </div>
-                                <div className="flex items-center justify-between">
-                                  <span className="text-xs font-black text-slate-600">Total Validations</span>
-                                  <span className="text-xs font-black text-slate-900">
-                                    {totalSolutions}
-                                  </span>
-                                </div>
-                              </div>
-                            </div>
-                          )}
-
-                          <div className="space-y-4">
-                            <div className="flex items-center justify-between">
-                              {isPreference ? (
-                                <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-purple-50 text-purple-700 rounded-full text-[10px] font-black uppercase tracking-widest border border-purple-100">
-                                  <Lightbulb className="w-3.5 h-3.5" /> Interested
-                                </span>
-                              ) : (
-                                <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-blue-50 text-blue-700 rounded-full text-[10px] font-black uppercase tracking-widest border border-blue-100">
-                                  <ShieldCheck className="w-3.5 h-3.5" /> Authority
-                                </span>
-                              )}
-
-                              {isManager && (
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setSelectedDeveloper(dev.email);
-                                  }}
-                                  className="text-[10px] font-black text-slate-400 hover:text-blue-600 uppercase tracking-wider flex items-center gap-1 transition-colors"
-                                >
-                                  Briefing <Eye className="w-4 h-4" />
-                                </button>
-                              )}
-                            </div>
-
-                            {isManager && (
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  if (!isOverloaded) handleAssignIssue(dev.email, dev.name);
-                                }}
-                                disabled={isAssigning || isOverloaded}
-                                className={`w - full py - 4 rounded - 2xl font - black text - xs uppercase tracking - widest transition - all shadow - xl active: scale - 95 ${isOverloaded
-                                  ? 'bg-slate-100 text-slate-300 border border-slate-200 cursor-not-allowed shadow-none'
-                                  : 'bg-slate-900 text-white hover:bg-black shadow-slate-200 hover:shadow-blue-500/20'
-                                  } `}
-                              >
-                                {isAssigning ? 'Assigning...' : (isOverloaded ? 'Overloaded' : 'Assign Mission')}
-                              </button>
-                            )}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-            </div>
+          )}
+          {isManager && (
+            <button
+              onClick={() => setActiveTab('dashboard')}
+              className={`flex items-center gap-2 px-6 py-2.5 text-sm font-bold rounded-lg transition-all ${activeTab === 'dashboard'
+                ? 'bg-white text-blue-600 shadow-sm'
+                : 'text-slate-500 hover:text-slate-800'
+                }`}
+            >
+              <LayoutDashboard size={18} />
+              PM Dashboard
+            </button>
           )}
         </div>
-      )}
+
+        {activeTab === 'dashboard' ? (
+          <ProjectManagerDashboard refreshTrigger={refreshTrigger} />
+        ) : activeTab === 'missions' ? (
+          <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-500">
+            <DeveloperProfileView
+              developerEmail={currentUser?.email}
+              isSubmitter={false}
+              isModal={false}
+              onClose={() => setActiveTab('submit')}
+            />
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
+            {/* Left: Submit Form */}
+            <div className="lg:col-span-12 xl:col-span-5">
+              <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-8 sticky top-28">
+                <div className="mb-8">
+                  <h2 className="text-2xl font-bold text-slate-900 tracking-tight">Report New Issue</h2>
+                  <p className="text-sm text-slate-500 mt-1 font-medium">Provide details to identify the most suitable expert</p>
+                </div>
+
+                <form onSubmit={handleSubmit} className="space-y-6">
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold text-slate-700 uppercase tracking-widest">Issue Title</label>
+                    <input
+                      type="text"
+                      value={title}
+                      onChange={(e) => setTitle(e.target.value)}
+                      className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-medium focus:bg-white focus:ring-4 focus:ring-blue-500/10 focus:border-blue-600 outline-none transition-all placeholder:text-slate-400"
+                      placeholder="e.g., Memory leak in auth microservice"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold text-slate-700 uppercase tracking-widest">Severity</label>
+                    <div className="grid grid-cols-4 gap-2">
+                      {['low', 'medium', 'high', 'critical'].map((p) => (
+                        <button
+                          key={p}
+                          type="button"
+                          onClick={() => setPriority(p)}
+                          className={`py-2 px-1 rounded-lg text-[10px] font-bold uppercase tracking-wider border transition-all ${priority === p
+                            ? 'bg-blue-600 border-blue-600 text-white shadow-md shadow-blue-500/20'
+                            : 'bg-white border-slate-200 text-slate-500 hover:border-blue-300 hover:text-blue-600'
+                            }`}
+                        >
+                          {p}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold text-slate-700 uppercase tracking-widest">Description</label>
+                    <textarea
+                      value={description}
+                      onChange={(e) => setDescription(e.target.value)}
+                      rows={6}
+                      className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-4 text-sm font-medium focus:bg-white focus:ring-4 focus:ring-blue-500/10 focus:border-blue-600 outline-none transition-all placeholder:text-slate-400 resize-none leading-relaxed"
+                      placeholder="Provide a detailed description of the problem..."
+                    />
+                  </div>
+
+                  {error && (
+                    <div className="bg-red-50 border border-red-100 text-red-600 p-4 rounded-xl text-xs font-bold flex items-center gap-3">
+                      <AlertTriangle className="w-4 h-4 flex-shrink-0" />
+                      {error}
+                    </div>
+                  )}
+
+                  {successMessage && (
+                    <div className="bg-emerald-50 border border-emerald-100 text-emerald-700 p-4 rounded-xl text-xs font-bold flex items-center gap-3">
+                      <CheckCircle className="w-4 h-4 flex-shrink-0" />
+                      {successMessage}
+                    </div>
+                  )}
+
+                  <button
+                    type="submit"
+                    disabled={loading}
+                    className="w-full flex items-center justify-center gap-3 bg-blue-600 hover:bg-blue-700 text-white py-4 rounded-xl font-bold uppercase tracking-widest text-xs transition-all shadow-lg shadow-blue-500/20 active:scale-[0.98] disabled:opacity-50"
+                  >
+                    {loading ? (
+                      <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    ) : (
+                      <Brain size={18} />
+                    )}
+                    Predict & Recommend Experts
+                  </button>
+                </form>
+              </div>
+            </div>
+
+            {/* Right: Results Section */}
+            <div className="lg:col-span-12 xl:col-span-7">
+              {!predictedCategory && !loading && (
+                <div className="h-full min-h-[400px] flex flex-col items-center justify-center bg-white rounded-2xl border border-slate-200 border-dashed p-10 text-center">
+                  <div className="w-20 h-20 bg-slate-50 rounded-3xl flex items-center justify-center text-slate-300 mb-6">
+                    <Search size={40} />
+                  </div>
+                  <h3 className="text-lg font-bold text-slate-900">Awaiting Data</h3>
+                  <p className="text-sm text-slate-500 mt-2 max-w-xs mx-auto">
+                    Fill in the issue details and click analyze to see predicted categories and expert recommendations.
+                  </p>
+                </div>
+              )}
+
+              {loading && (
+                <div className="h-full min-h-[400px] flex flex-col items-center justify-center bg-white rounded-2xl border border-slate-200 p-10 text-center animate-pulse">
+                  <div className="w-20 h-20 bg-blue-50 rounded-3xl flex items-center justify-center text-blue-600 mb-6">
+                    <Brain size={40} className="animate-bounce" />
+                  </div>
+                  <h3 className="text-lg font-bold text-slate-900">Analyzing Complexity...</h3>
+                  <p className="text-sm text-slate-500 mt-2">Our AI is mapping your issue to the optimal expertise areas.</p>
+                </div>
+              )}
+
+              {predictedCategory && !loading && (
+                <div className="space-y-10 animate-in fade-in slide-in-from-right-4 duration-700">
+                  {/* Category Card */}
+                  <div className="bg-blue-600 rounded-2xl p-8 text-white shadow-xl shadow-blue-500/20 relative overflow-hidden group">
+                    <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full -mr-32 -mt-32 blur-3xl transition-transform group-hover:scale-110 duration-1000" />
+                    <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
+                      <div>
+                        <p className="text-[10px] font-black uppercase tracking-[0.2em] text-blue-200 mb-2">Predicted Issue Category</p>
+                        <div className="flex items-center gap-3">
+                          <div className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse" />
+                          <h3 className="text-3xl font-black tracking-tight uppercase">{predictedCategory}</h3>
+                        </div>
+                      </div>
+                      {currentUser?.email && (
+                        <button
+                          onClick={() => setSubmitterEmailForProfile(currentUser.email)}
+                          className="px-4 py-2 bg-white/10 hover:bg-white/20 border border-white/20 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-colors backdrop-blur-sm"
+                        >
+                          View My Expertise
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Recommendation List */}
+                  <div>
+                    <div className="flex items-center justify-between mb-6">
+                      <h3 className="text-sm font-bold text-slate-900 uppercase tracking-[0.1em] flex items-center gap-2">
+                        <Users size={18} className="text-blue-600" />
+                        Recommended Experts
+                      </h3>
+                      <span className="text-[10px] font-bold text-slate-400 bg-slate-100 px-2 py-1 rounded">MATCHED BY AI</span>
+                    </div>
+
+                    {recommendations.length === 0 ? (
+                      <div className="bg-white rounded-2xl border border-slate-200 p-8 text-center">
+                        <p className="text-sm text-slate-500 font-medium italic">No suitable experts found for this specific category yet.</p>
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {recommendations.map((dev) => {
+                          const expertiseScore = dev.expertiseScore !== undefined
+                            ? dev.expertiseScore
+                            : (dev.expertise?.[predictedCategory] ?? 0);
+
+                          const pendingCount = dev.pending_count || 0;
+                          const isOverloaded = pendingCount > 5;
+                          const isPreference = dev.recommendation_reason === 'preference';
+
+                          return (
+                            <div
+                              key={dev.email}
+                              className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm hover:shadow-xl hover:border-blue-200 transition-all hover:-translate-y-1 group flex flex-col h-full"
+                            >
+                              <div className="flex items-start justify-between mb-6">
+                                <div className="w-12 h-12 bg-slate-50 rounded-xl flex items-center justify-center text-slate-400 border border-slate-100 group-hover:bg-blue-600 group-hover:text-white group-hover:border-blue-600 transition-all duration-300">
+                                  <User size={24} />
+                                </div>
+                                <div className="text-right">
+                                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-tighter mb-1">Expertise</p>
+                                  <p className={`text-lg font-black tracking-tight ${expertiseScore > 0.8 ? 'text-emerald-600' : 'text-blue-600'}`}>
+                                    {Math.round(expertiseScore * 100)}%
+                                  </p>
+                                </div>
+                              </div>
+
+                              <div className="flex-1 mb-6">
+                                <h4 className="font-bold text-slate-900 text-md truncate group-hover:text-blue-600 transition-colors">{dev.name}</h4>
+                                <p className="text-[10px] text-slate-400 font-medium truncate mt-0.5">{dev.email}</p>
+
+                                <div className="mt-4 flex flex-wrap gap-1.5">
+                                  {isPreference && (
+                                    <span className="bg-purple-50 text-purple-600 text-[9px] font-bold px-2 py-0.5 rounded-md border border-purple-100">STATED INTEREST</span>
+                                  )}
+                                  {isOverloaded ? (
+                                    <span className="bg-red-50 text-red-600 text-[9px] font-bold px-2 py-0.5 rounded-md border border-red-100">BUSY</span>
+                                  ) : (
+                                    <span className="bg-emerald-50 text-emerald-600 text-[9px] font-bold px-2 py-0.5 rounded-md border border-emerald-100">AVAILABLE</span>
+                                  )}
+                                </div>
+                              </div>
+
+                              <div className="space-y-3 pt-6 border-t border-slate-50">
+                                {isManager ? (
+                                  <button
+                                    onClick={() => handleAssignIssue(dev.email, dev.name)}
+                                    disabled={assigningIssue[dev.email] || isOverloaded}
+                                    className={`w-full py-2.5 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all ${isOverloaded || assigningIssue[dev.email]
+                                      ? 'bg-slate-100 text-slate-400 cursor-not-allowed'
+                                      : 'bg-slate-900 text-white hover:bg-blue-600 shadow-md shadow-slate-200'
+                                      }`}
+                                  >
+                                    {assigningIssue[dev.email] ? 'Assigning...' : 'Assign Task'}
+                                  </button>
+                                ) : (
+                                  <button
+                                    onClick={() => setSelectedDeveloper(dev.email)}
+                                    className="w-full py-2.5 bg-slate-100 hover:bg-blue-50 text-slate-600 hover:text-blue-600 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all"
+                                  >
+                                    View Expert Profile
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+      </main>
 
       {/* Profile Modals */}
       {selectedDeveloper && (
@@ -488,36 +460,36 @@ const ExpertiseRecommendationHomePage = ({ module }) => {
         />
       )}
 
-      {/* Notification Mission Briefing Modal */}
-      {viewingMissionId && (
-        <NotificationIssueViewModal
-          issueId={viewingMissionId}
-          onClose={() => setviewingMissionId(null)}
-          onResolved={() => setRefreshTrigger(prev => prev + 1)}
-        />
+      {/* Notification Issue Briefing Modal */}
+      {viewingIssueId && (
+        <ErrorBoundary>
+          <NotificationIssueViewModal
+            issueId={viewingIssueId}
+            onClose={() => setViewingIssueId(null)}
+            onResolved={() => setRefreshTrigger(prev => prev + 1)}
+          />
+        </ErrorBoundary>
       )}
 
       <style>{`
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
-
-div, h1, h2, h3, h4, h5, p, span, button, input, textarea {
-  font - family: 'Inter', sans - serif!important;
-}
-
-        .custom - scrollbar:: -webkit - scrollbar {
-  width: 8px;
-}
-        .custom - scrollbar:: -webkit - scrollbar - track {
-  background: transparent;
-}
-        .custom - scrollbar:: -webkit - scrollbar - thumb {
-  background: #e2e8f0;
-  border - radius: 10px;
-}
-        .custom - scrollbar:: -webkit - scrollbar - thumb:hover {
-  background: #cbd5e1;
-}
-`}</style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+        div, h1, h2, h3, h4, h5, p, span, button, input, textarea {
+          font-family: 'Inter', sans-serif !important;
+        }
+        .custom-scrollbar::-webkit-scrollbar {
+          width: 8px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+          background: transparent;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+          background: #e2e8f0;
+          border-radius: 10px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+          background: #cbd5e1;
+        }
+      `}</style>
     </div>
   );
 };
@@ -534,32 +506,24 @@ const NotificationIssueViewModal = ({ issueId, onClose, onResolved }) => {
 
   useEffect(() => {
     const fetchIssue = async () => {
-      console.error('CRITICAL DEBUG [Modal]: Component mounted with issueId:', issueId, 'Type:', typeof issueId);
       try {
         setLoading(true);
         setError('');
         const token = getAuthToken();
-        const url = `${API_BASE_URL} /api/expertise / issues / ${String(issueId).trim()} `;
-        console.log('DEBUG [Modal]: Requesting URL:', url);
+        const url = `${API_BASE_URL}/api/expertise/issues/${String(issueId).trim()}`;
 
         const res = await axios.get(url, {
-          headers: { Authorization: `Bearer ${token} ` },
-          timeout: 10000
+          headers: { Authorization: `Bearer ${token}` }
         });
 
-        console.log('DEBUG [Modal]: Received response:', res.data);
-
         if (!res.data || !res.data.id) {
-          console.error('DEBUG [Modal]: Mission data is invalid!', res.data);
-          throw new Error('Mission data not found or invalid.');
+          throw new Error('Issue data not found.');
         }
         setIssue(res.data);
       } catch (err) {
-        console.error('DEBUG [Modal]: Failed to load Mission Briefings:', err);
-        setError(`Failed to load Mission Briefings: ${err.message} `);
+        setError(`Failed to load issue details: ${err.message}`);
       } finally {
         setLoading(false);
-        console.log('DEBUG [Modal]: Fetch complete, loading state false');
       }
     };
     if (issueId) fetchIssue();
@@ -567,10 +531,10 @@ const NotificationIssueViewModal = ({ issueId, onClose, onResolved }) => {
 
   const handleMarkAsFixed = async (status = 'resolved') => {
     try {
-      const noteToSubmit = status === 'blocked' ? `[BLOCKED] ${resolutionNote} ` : resolutionNote;
+      const noteToSubmit = status === 'blocked' ? `[BLOCKED] ${resolutionNote}` : resolutionNote;
 
       if (!resolutionNote.trim()) {
-        alert('Please provide a brief summary for the Project Manager.');
+        alert('Please provide a brief summary of the resolution.');
         return;
       }
       setIsResolving(true);
@@ -578,17 +542,16 @@ const NotificationIssueViewModal = ({ issueId, onClose, onResolved }) => {
       const User = getCurrentUser();
 
       await axios.post(
-        `${API_BASE_URL} /api/expertise / issues / ${issueId}/complete?developerEmail=${encodeURIComponent(User.email)}&resolutionNote=${encodeURIComponent(noteToSubmit)}`,
+        `${API_BASE_URL}/api/expertise/issues/${issueId}/complete?developerEmail=${encodeURIComponent(User.email)}&resolutionNote=${encodeURIComponent(noteToSubmit)}`,
         {},
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
       onResolved?.();
       onClose();
-      alert(status === 'blocked' ? 'Mission marked as Blocked.' : 'Success! The mission has been marked as resolved.');
+      alert(status === 'blocked' ? 'Issue marked as Blocked.' : 'Issue successfully resolved.');
     } catch (err) {
-      console.error('Finalize Mission Error:', err);
-      alert(err.response?.data?.detail || 'Failed to update Mission status. Please try again.');
+      alert(err.response?.data?.detail || 'Failed to update status.');
     } finally {
       setIsResolving(false);
     }
@@ -597,225 +560,178 @@ const NotificationIssueViewModal = ({ issueId, onClose, onResolved }) => {
   if (!issueId) return null;
 
   return (
-    <ErrorBoundary>
-      <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xl flex items-center justify-center z-[9999] p-4 animate-in fade-in zoom-in-95 duration-500">
-        <div className="bg-slate-50 rounded-[3rem] shadow-[0_40px_80px_-20px_rgba(0,0,0,0.3)] max-w-4xl w-full overflow-hidden border border-white/40 flex flex-col max-h-[92vh] relative">
-          <div className="absolute top-0 left-0 w-full h-48 bg-gradient-to-br from-slate-900 via-blue-900 to-indigo-950 z-0" />
+    <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md flex items-center justify-center z-[9999] p-4 animate-in fade-in duration-300">
+      <div className="bg-slate-50 rounded-[2.5rem] shadow-[0_40px_80px_-20px_rgba(0,0,0,0.3)] max-w-5xl w-full max-h-[92vh] overflow-hidden border border-white/40 flex flex-col relative">
 
-          {/* ... Modal Header ... */}
-          <div className="px-10 pt-10 pb-8 flex justify-between items-start shrink-0 relative z-10">
+        {/* Header Section */}
+        <div className="relative px-10 pt-10 pb-12 shrink-0 overflow-hidden">
+          <div className="absolute inset-0 bg-gradient-to-br from-blue-600 to-indigo-700" />
+          <div className="absolute top-0 right-0 w-96 h-96 bg-white/10 rounded-full blur-3xl -mr-48 -mt-48" />
+
+          <div className="flex justify-between items-start relative z-10">
             <div className="flex items-center gap-6">
-              <div className="p-4 bg-white/10 backdrop-blur-2xl rounded-2xl border border-white/20 shadow-xl">
-                <ShieldCheck className="text-white w-8 h-8" />
+              <div className="p-4 bg-white/20 backdrop-blur-2xl rounded-3xl border border-white/20 shadow-2xl">
+                <ShieldCheck className="w-8 h-8 text-white" />
               </div>
               <div>
-                <div className="flex items-center gap-3 mb-1">
-                  <span className="px-2 py-0.5 bg-blue-500/20 border border-blue-400/30 rounded-full text-[9px] font-black uppercase text-blue-200 tracking-wider">
-                    Mission Briefing
+                <div className="flex items-center gap-3 mb-2">
+                  <span className="px-3 py-1 bg-white/20 border border-white/30 rounded-full text-[10px] font-black uppercase text-white tracking-widest">
+                    Issue Review
                   </span>
-                  <span className="text-white/40 text-[10px] font-mono">ID: {String(issueId).slice(-8)}</span>
+                  <span className="text-white/50 text-[10px] font-mono">ID: {String(issueId).split('-').pop()}</span>
                 </div>
-                <h3 className="text-2xl font-black text-white tracking-tight leading-tight">Mission Briefing</h3>
+                <h2 className="text-3xl font-black text-white tracking-tight leading-tight">
+                  {issue?.title || 'Loading Issue...'}
+                </h2>
               </div>
             </div>
             <button
               onClick={onClose}
-              className="p-3 bg-white/5 hover:bg-white/10 border border-white/10 rounded-2xl text-white transition-all hover:rotate-90 duration-300 backdrop-blur-md"
+              className="p-3 bg-white/10 hover:bg-white/20 border border-white/10 rounded-2xl text-white transition-all duration-300 backdrop-blur-md"
             >
               <X size={24} />
             </button>
           </div>
+        </div>
 
-          <div className="px-10 pb-10 flex-1 overflow-y-auto custom-scrollbar -mt-2">
-            {loading ? (
-              <div className="py-32 flex flex-col items-center justify-center space-y-8">
-                <div className="relative">
-                  <div className="w-20 h-20 border-[6px] border-slate-100 rounded-full" />
-                  <div className="w-20 h-20 border-[6px] border-blue-600 border-t-transparent rounded-full animate-spin absolute top-0 left-0" />
-                </div>
-                <p className="text-slate-400 font-black uppercase tracking-wider text-[11px] animate-pulse">Loading Mission Briefings...</p>
-              </div>
-            ) : error ? (
-              <div className="mt-8 bg-red-950/10 border border-red-500/20 p-8 rounded-[2rem] flex flex-col items-center text-center gap-6 text-red-700 shadow-2xl">
-                <div className="p-4 bg-red-100 rounded-3xl shadow-lg border border-red-200">
-                  <AlertTriangle className="w-10 h-10" />
-                </div>
-                <div>
-                  <h4 className="font-black text-2xl tracking-tight text-slate-900">Feed Interrupted</h4>
-                  <p className="text-sm font-medium opacity-60 mt-1">{error}</p>
-                </div>
-                <button
-                  onClick={() => window.location.reload()}
-                  className="px-10 py-4 bg-slate-900 text-white rounded-2xl text-xs font-black uppercase tracking-widest hover:bg-black transition-all shadow-xl shadow-slate-200"
-                >
-                  Retry
-                </button>
-              </div>
-            ) : issue ? (
-              <>
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 animate-in slide-in-from-bottom-8 duration-700">
-                  <div className="lg:col-span-7 space-y-10">
-                    <div className="bg-white rounded-[2.5rem] p-10 border border-slate-100 shadow-sm relative group hover:shadow-2xl hover:shadow-blue-500/[0.03] transition-all duration-500">
-                      <div className="mb-10">
-                        <div className="flex gap-3 mb-6">
-                          <span className="px-3 py-1 bg-blue-50 text-blue-600 rounded-xl text-[10px] font-black uppercase tracking-widest border border-blue-100">
-                            {issue.category}
-                          </span>
-                          <span className={`px-3 py-1 rounded-xl text-[10px] font-black uppercase tracking-widest border ${issue.priority === 'high' ? 'bg-orange-50 text-orange-600 border-orange-100' : 'bg-slate-50 text-slate-500 border-slate-100'}`}>
-                            {issue.priority || 'Standard'} Priority
-                          </span>
-                        </div>
-                        <h4 className="text-4xl font-black text-slate-900 tracking-tight leading-[1.05] mb-6">
-                          {issue.title}
-                        </h4>
-                        <div className="space-y-4 pt-10 border-t border-slate-50">
-                          <div className="flex justify-between items-center">
-                            <p className="text-[10px] font-black uppercase tracking-wider text-slate-400">Objective Description</p>
-                            <span className="text-[10px] font-black text-blue-500 uppercase tracking-widest">Live Document</span>
-                          </div>
-                          <p className="text-slate-700 text-lg leading-relaxed font-medium selection:bg-blue-100 italic">
-                            "{issue.description}"
-                          </p>
-                        </div>
-                      </div>
+        <div className="flex-1 overflow-y-auto px-10 pb-10 -mt-6 custom-scrollbar">
+          {loading ? (
+            <div className="bg-white rounded-[2rem] p-20 flex flex-col items-center justify-center shadow-xl border border-slate-100">
+              <div className="w-12 h-12 border-4 border-blue-100 border-t-blue-600 rounded-full animate-spin mb-6" />
+              <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Syncing Data Terminal...</p>
+            </div>
+          ) : error ? (
+            <div className="bg-white rounded-[2rem] p-16 text-center shadow-xl border border-slate-100">
+              <AlertTriangle className="w-16 h-16 text-amber-500 mx-auto mb-6 opacity-20" />
+              <p className="text-sm font-bold text-slate-600 mb-8">{error}</p>
+              <button onClick={onClose} className="px-8 py-3 bg-blue-600 text-white rounded-xl font-bold text-xs uppercase tracking-widest">Close Portal</button>
+            </div>
+          ) : issue ? (
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+              {/* Left Column: Context & Metadata */}
+              <div className="lg:col-span-7 space-y-8">
+                <div className="bg-white rounded-[2rem] p-10 shadow-sm border border-slate-200 relative group overflow-hidden">
+                  <div className="absolute top-0 left-0 w-1.5 h-full bg-blue-600" />
 
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-10 border-t border-slate-50">
-                        <div className="space-y-6">
-                          <div className="flex items-center gap-4">
-                            <div className="w-10 h-10 rounded-2xl bg-slate-100 flex items-center justify-center text-slate-400">
-                              <User className="w-5 h-5" />
-                            </div>
-                            <div>
-                              <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Raised By</p>
-                              <p className="text-sm font-black text-slate-900">{issue.submittedByName || 'Client'}</p>
-                              <p className="text-[10px] text-slate-400 font-mono tracking-tighter">{issue.submittedBy}</p>
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-4">
-                            <div className="w-10 h-10 rounded-2xl bg-blue-50 flex items-center justify-center text-blue-400">
-                              <ShieldCheck className="w-5 h-5" />
-                            </div>
-                            <div>
-                              <p className="text-[9px] font-black text-blue-400 uppercase tracking-widest">Assigned By</p>
-                              <p className="text-sm font-black text-slate-900">Project Manager</p>
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className="space-y-6">
-                          <div className="flex items-center gap-4">
-                            <div className="w-10 h-10 rounded-2xl bg-slate-100 flex items-center justify-center text-slate-400">
-                              <Clock className="w-5 h-5" />
-                            </div>
-                            <div>
-                              <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Timestamp</p>
-                              <p className="text-sm font-black text-slate-900">
-                                {(() => {
-                                  try {
-                                    if (!issue.createdAt) return 'Recent';
-                                    const d = new Date(issue.createdAt);
-                                    return isNaN(d) ? 'Recent' : d.toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
-                                  } catch (e) {
-                                    return 'Recent';
-                                  }
-                                })()}
-                              </p>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-
+                  <div className="mb-8">
+                    <div className="flex items-center gap-3 mb-4">
+                      <div className="w-6 h-0.5 bg-blue-600/30" />
+                      <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-400">Detailed Description</h4>
                     </div>
-
-                    <div className="bg-slate-100/50 rounded-[2rem] p-6 border border-slate-200/50 flex items-center gap-6 group">
-                      <div className="w-16 h-16 rounded-[1.5rem] bg-gradient-to-br from-blue-600 to-indigo-700 p-0.5 group-hover:rotate-6 transition-transform">
-                        <div className="w-full h-full bg-slate-900 rounded-[1.4rem] flex items-center justify-center">
-                          <User className="text-white w-7 h-7" />
-                        </div>
-                      </div>
-                      <div>
-                        <p className="text-[9px] font-black text-blue-500 uppercase tracking-widest mb-1">Assigned To</p>
-                        <p className="text-xl font-black text-slate-900 leading-none">Mission Control</p>
-                      </div>
-                    </div>
+                    <p className="text-slate-800 text-lg leading-relaxed font-semibold">
+                      {issue.description}
+                    </p>
                   </div>
 
-                  <div className="lg:col-span-5 flex flex-col gap-8">
-                    <div className="bg-slate-900 rounded-[2.5rem] p-10 border border-white/5 shadow-2xl relative overflow-hidden flex-1 flex flex-col">
-                      <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/10 rounded-full blur-3xl -mr-16 -mt-16" />
-                      <div className="relative z-10 flex flex-col h-full">
-                        <div className="flex items-center gap-3 mb-10">
-                          <div className="w-8 h-1 bg-emerald-500 rounded-full" />
-                          <h3 className="text-[12px] font-black text-white tracking-widest uppercase">Resolution Intel</h3>
-                        </div>
-
-                        {issue.status !== 'resolved' ? (
-                          <div className="flex flex-col h-full gap-8">
-                            <div className="flex-1 flex flex-col">
-                              <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-4">Intel Log & Fix Summary</label>
-                              <textarea
-                                value={resolutionNote}
-                                onChange={(e) => setResolutionNote(e.target.value)}
-                                placeholder="Enter resolution details..."
-                                className="flex-1 w-full p-8 rounded-[2rem] bg-white/[0.03] border-2 border-white/5 text-white text-md font-medium placeholder:text-slate-700 focus:bg-white/[0.06] focus:border-blue-500 outline-none transition-all resize-none leading-relaxed"
-                              />
-                            </div>
-                            <div className="grid grid-cols-2 gap-4">
-                              <button
-                                onClick={() => {
-                                  if (window.confirm('Are you sure you cannot resolve this mission? It will be marked as blocked and the PM will be notified.')) {
-                                    handleMarkAsFixed('blocked');
-                                  }
-                                }}
-                                disabled={isResolving}
-                                className="py-6 bg-slate-800 text-slate-400 rounded-[2rem] font-black text-xs uppercase tracking-widest hover:bg-slate-700 transition-all border border-white/5 disabled:opacity-50"
-                              >
-                                Can't Resolve
-                              </button>
-                              <button
-                                onClick={handleMarkAsFixed}
-                                disabled={isResolving}
-                                className="py-6 bg-white text-slate-900 rounded-[2rem] font-black text-xs uppercase tracking-widest hover:bg-emerald-50 transition-all flex items-center justify-center gap-3 shadow-3xl shadow-black group/btn active:scale-95 disabled:opacity-20 translate-y-0 hover:-translate-y-1"
-                              >
-                                {isResolving ? (
-                                  <div className="w-5 h-5 border-4 border-slate-900 border-t-transparent rounded-full animate-spin" />
-                                ) : (
-                                  <>
-                                    Resolved Mission <CheckCircle className="w-5 h-5 group-hover:scale-110 transition-transform" />
-                                  </>
-                                )}
-                              </button>
-                            </div>
-                          </div>
-                        ) : (
-                          <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-[2rem] p-10 flex flex-col items-center text-center gap-8 shadow-2xl">
-                            <div className="w-24 h-24 rounded-full bg-emerald-500/20 border-4 border-emerald-500/40 flex items-center justify-center animate-pulse">
-                              <ShieldCheck className="text-emerald-400 w-12 h-12" />
-                            </div>
-                            <div>
-                              <h4 className="text-2xl font-black text-white tracking-tight mb-4">Deployment Successful</h4>
-                              <p className="text-emerald-100/60 text-sm font-medium leading-relaxed italic border-t border-white/5 pt-8">
-                                "{issue.resolutionNote}"
-                              </p>
-                            </div>
-                          </div>
-                        )}
+                  <div className="grid grid-cols-2 gap-8 pt-8 border-t border-slate-50">
+                    <div>
+                      <h4 className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-3">Core Category</h4>
+                      <div className="inline-flex items-center gap-2.5 px-4 py-2 bg-blue-50 text-blue-700 rounded-xl border border-blue-100 font-bold text-xs">
+                        {issue.category}
                       </div>
+                    </div>
+                    <div>
+                      <h4 className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-3">Workflow Status</h4>
+                      <div className={`inline-flex items-center gap-2.5 px-4 py-2 rounded-xl border font-bold text-xs uppercase ${issue.status === 'resolved' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' : 'bg-amber-50 text-amber-700 border-amber-100'
+                        }`}>
+                        {issue.status}
+                      </div>
+                    </div>
+                    <div>
+                      <h4 className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-3">Submitted By</h4>
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-400 font-bold text-[10px]">
+                          {issue.submittedByName?.charAt(0) || 'U'}
+                        </div>
+                        <p className="text-xs font-bold text-slate-900">{issue.submittedByName}</p>
+                      </div>
+                    </div>
+                    <div>
+                      <h4 className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-3">Reported On</h4>
+                      <p className="text-xs font-bold text-slate-900">
+                        {issue.createdAt ? new Date(issue.createdAt).toLocaleDateString() : 'N/A'}
+                      </p>
                     </div>
                   </div>
                 </div>
-                <button
-                  onClick={onClose}
-                  className="w-full py-6 rounded-[2rem] border-2 border-slate-100 text-[11px] font-black uppercase tracking-[0.3em] text-slate-400 hover:bg-slate-50 transition-all hover:text-slate-600 active:scale-95 mt-10"
-                >
-                  Exit Briefing
-                </button>
-              </>
-            ) : null}
-          </div>
+
+                <div className="bg-white rounded-[2rem] p-8 border border-slate-200 shadow-sm flex items-center justify-between">
+                  <div className="flex items-center gap-5">
+                    <div className="w-14 h-14 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center border border-blue-100">
+                      <User size={28} />
+                    </div>
+                    <div>
+                      <p className="text-[10px] font-black text-blue-600 uppercase tracking-widest mb-1">Assigned Expert</p>
+                      <p className="text-xl font-bold text-slate-900">{issue.assignedToName || 'Awaiting Sync'}</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Right Column: Resolution Actions */}
+              <div className="lg:col-span-5 h-full">
+                <div className="bg-slate-900 rounded-[2rem] p-8 border border-slate-800 shadow-2xl h-full flex flex-col">
+                  <div className="flex items-center gap-4 mb-8">
+                    <div className="w-1.5 h-6 bg-blue-500 rounded-full shadow-[0_0_10px_rgba(37,99,235,0.5)]" />
+                    <h3 className="text-[10px] font-black text-white uppercase tracking-widest">Resolution Terminal</h3>
+                  </div>
+
+                  {issue.status !== 'resolved' ? (
+                    <div className="flex-1 flex flex-col">
+                      <div className="mb-6 flex-1">
+                        <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-4 block">Action Debrief & Fix Summary</label>
+                        <textarea
+                          value={resolutionNote}
+                          onChange={(e) => setResolutionNote(e.target.value)}
+                          placeholder="Describe the technical resolution..."
+                          className="w-full h-64 p-6 rounded-2xl bg-white/5 border border-white/10 text-white text-sm font-medium focus:bg-white/[0.08] focus:border-blue-500 outline-none transition-all resize-none leading-relaxed placeholder:text-slate-600"
+                        />
+                      </div>
+                      <div className="space-y-4">
+                        <button
+                          onClick={() => handleMarkAsFixed('resolved')}
+                          disabled={isResolving}
+                          className="w-full py-5 bg-white text-slate-900 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-emerald-50 transition-all flex items-center justify-center gap-3 active:scale-[0.98] disabled:opacity-20 shadow-xl"
+                        >
+                          {isResolving ? (
+                            <div className="w-5 h-5 border-2 border-slate-900 border-t-transparent rounded-full animate-spin" />
+                          ) : (
+                            <>Confirm Final Fix <CheckCircle size={18} /></>
+                          )}
+                        </button>
+                        <button
+                          onClick={() => {
+                            if (window.confirm('Mark this issue as blocked?')) {
+                              handleMarkAsFixed('blocked');
+                            }
+                          }}
+                          disabled={isResolving}
+                          className="w-full py-4 text-slate-400 hover:text-white rounded-2xl font-bold text-[10px] uppercase tracking-widest transition-all border border-white/5 hover:border-white/10 active:scale-[0.98]"
+                        >
+                          Mark as Blocked
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex-1 flex flex-col items-center justify-center text-center">
+                      <div className="w-20 h-20 bg-emerald-500/10 rounded-full flex items-center justify-center text-emerald-500 mb-8 border border-emerald-500/20 shadow-2xl shadow-emerald-500/10">
+                        <CheckCircle size={40} />
+                      </div>
+                      <h4 className="text-white font-black text-xl mb-4">Verification Success</h4>
+                      <p className="text-emerald-400 text-[10px] font-black uppercase tracking-widest mb-8">This issue has been closed</p>
+                      <div className="bg-white/5 rounded-2xl p-6 border border-white/5 w-full">
+                        <p className="text-sm text-slate-400 italic leading-relaxed">"{issue.resolutionNote}"</p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          ) : null}
         </div>
       </div>
-    </ErrorBoundary>
+    </div>
   );
 };
+
 export default ExpertiseRecommendationHomePage;
