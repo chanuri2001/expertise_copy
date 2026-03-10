@@ -15,6 +15,7 @@ from .repository import (
     update_preferences,
     append_work_history,
     upsert_developer,
+    update_pending_issue_status,
 )
 from .issue_repository import (
     create_issue,
@@ -62,8 +63,23 @@ def save_developer_profile(profile_in: DeveloperProfileIn) -> DeveloperProfile:
     return upsert_developer(profile_in)
 
 
+def _enrich_developer_profile(dev: DeveloperProfile) -> DeveloperProfile:
+    """Add dynamic workload and capacity metrics to a profile."""
+    workload = _calculate_workload(dev)
+    dev.workload_score = workload
+    dev.capacity_percentage = max(0, int(100 - (workload * 10)))
+    
+    # Auto-status logic for overloaded devs
+    if workload >= 8.0:
+        dev.status = "Busy"
+    return dev
+
+
 def fetch_developer_profile(email: str) -> DeveloperProfile | None:
-    return get_developer_by_email(email.lower())
+    profile = get_developer_by_email(email.lower())
+    if profile:
+        return _enrich_developer_profile(profile)
+    return None
 
 
 def get_developer_profile_detail(email: str) -> DeveloperProfileDetailResponse | None:
@@ -71,6 +87,8 @@ def get_developer_profile_detail(email: str) -> DeveloperProfileDetailResponse |
     profile = get_developer_by_email(email.lower())
     if not profile:
         return None
+    
+    profile = _enrich_developer_profile(profile)
     
     # Organize pending issues by category
     pending_issues_by_category: Dict[str, List[PendingIssue]] = {}
@@ -396,8 +414,9 @@ def get_all_issues(status: str = None, page: int = 1, limit: int = 50) -> IssueL
     skip = (page - 1) * limit
     issues, total = list_all_issues(status, skip=skip, limit=limit)
     
-    # Enrich issues with current capacity of assigned developer
+    # Enrich issues with current capacity of assigned developer and top experts
     for issue in issues:
+        # 1. Handle Assigned Developer Metadata
         if issue.assignedTo:
             dev = get_developer_by_email(issue.assignedTo.lower())
             if dev:
@@ -408,6 +427,32 @@ def get_all_issues(status: str = None, page: int = 1, limit: int = 50) -> IssueL
                 if workload >= 8.0:
                     current_status = "Busy"
                 issue.assignedToStatus = current_status
+        
+        # 2. Dynamic Recommendation Generation (If missing)
+        # This handles seeded data or legacy issues without pre-calculated experts
+        if not issue.topExperts or len(issue.topExperts) == 0:
+            try:
+                rec_response = recommend_developers_for_category_seeded(
+                    issue.category,
+                    top_n=3
+                )
+                issue.topExperts = [
+                    {
+                        "email": dev.email,
+                        "name": dev.name,
+                        "expertiseScore": getattr(dev.expertise, issue.category, 0.0),
+                        "jiraIssuesSolved": getattr(dev.jiraIssuesSolved, issue.category, 0),
+                        "githubCommits": getattr(dev.githubCommits, issue.category, 0),
+                        "recommendation_reason": dev.recommendation_reason,
+                        "pending_count": dev.pending_count,
+                        "workload_score": dev.workload_score,
+                        "capacity_percentage": dev.capacity_percentage,
+                    }
+                    for dev in rec_response.developers
+                ]
+            except Exception as e:
+                print(f"Error generating dynamic recommendations for {issue.id}: {e}")
+                issue.topExperts = []
                 
     return IssueListResponse(issues=issues, total=total)
 
@@ -489,6 +534,39 @@ def assign_issue_from_dashboard(req: IssueAssignRequest) -> Issue:
             type="assignment",
             related_issue_id=issue.id
         )
+
+    return issue
+
+
+def accept_issue(issue_id: str, developer_email: str) -> Issue:
+    """Accept an assigned issue, moving it to in_progress."""
+    issue = get_issue_by_id(issue_id)
+    if not issue:
+        raise ValueError(f"Issue {issue_id} not found")
+    
+    if issue.assignedTo != developer_email.lower():
+        raise ValueError(f"Issue {issue_id} is not assigned to {developer_email}")
+    
+    # Update main issue status
+    issue = update_issue_data(issue_id, {"status": "in_progress"})
+    
+    # Update in developer profile
+    update_pending_issue_status(developer_email, issue.category, issue_id, "in_progress")
+    
+    # Notify PM (find the PM who submitted or just notify all managers)
+    try:
+        all_devs = list_developers()
+        managers = [d for d in all_devs if getattr(d, "role", "developer") == "manager"]
+        for mgr in managers:
+            create_notification(
+                user_email=mgr.email,
+                title="Mission Accepted",
+                message=f"Expert {developer_email} has accepted the mission: {issue.title}. Status is now In Progress.",
+                type="system",
+                related_issue_id=issue.id
+            )
+    except Exception as e:
+        print(f"Error in manager notification for acceptance: {e}")
 
     return issue
 

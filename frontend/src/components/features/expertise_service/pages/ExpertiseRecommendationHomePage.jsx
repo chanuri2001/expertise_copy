@@ -503,6 +503,7 @@ const NotificationIssueViewModal = ({ issueId, onClose, onResolved }) => {
   const [error, setError] = useState('');
   const [resolutionNote, setResolutionNote] = useState('');
   const [isResolving, setIsResolving] = useState(false);
+  const [isAccepting, setIsAccepting] = useState(false);
 
   useEffect(() => {
     const fetchIssue = async () => {
@@ -554,6 +555,33 @@ const NotificationIssueViewModal = ({ issueId, onClose, onResolved }) => {
       alert(err.response?.data?.detail || 'Failed to update status.');
     } finally {
       setIsResolving(false);
+    }
+  };
+
+  const handleAcceptMission = async () => {
+    try {
+      setIsAccepting(true);
+      const token = getAuthToken();
+      const User = getCurrentUser();
+
+      await axios.post(
+        `${API_BASE_URL}/api/expertise/issues/${issueId}/accept?developerEmail=${encodeURIComponent(User.email)}`,
+        {},
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      // Refresh issue data locally
+      const res = await axios.get(`${API_BASE_URL}/api/expertise/issues/${issueId}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setIssue(res.data);
+
+      onResolved?.(); // This triggers refresh in parent if needed
+      alert('Mission Accepted! Status is now In Progress.');
+    } catch (err) {
+      alert(err.response?.data?.detail || 'Failed to accept mission.');
+    } finally {
+      setIsAccepting(false);
     }
   };
 
@@ -688,10 +716,23 @@ const NotificationIssueViewModal = ({ issueId, onClose, onResolved }) => {
                         />
                       </div>
                       <div className="space-y-4">
+                        {issue.status === 'assigned' && (
+                          <button
+                            onClick={handleAcceptMission}
+                            disabled={isAccepting}
+                            className="w-full py-5 bg-blue-600 text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-blue-500 transition-all flex items-center justify-center gap-3 active:scale-[0.98] disabled:opacity-20 shadow-xl mb-4"
+                          >
+                            {isAccepting ? (
+                              <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                            ) : (
+                              <>Accept Mission <ArrowRight size={18} /></>
+                            )}
+                          </button>
+                        )}
                         <button
                           onClick={() => handleMarkAsFixed('resolved')}
-                          disabled={isResolving}
-                          className="w-full py-5 bg-white text-slate-900 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-emerald-50 transition-all flex items-center justify-center gap-3 active:scale-[0.98] disabled:opacity-20 shadow-xl"
+                          disabled={isResolving || issue.status === 'assigned'}
+                          className={`w-full py-5 bg-white text-slate-900 rounded-2xl font-black text-xs uppercase tracking-widest transition-all flex items-center justify-center gap-3 active:scale-[0.98] shadow-xl ${issue.status === 'assigned' ? 'opacity-30 cursor-not-allowed' : 'hover:bg-emerald-50'}`}
                         >
                           {isResolving ? (
                             <div className="w-5 h-5 border-2 border-slate-900 border-t-transparent rounded-full animate-spin" />

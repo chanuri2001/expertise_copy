@@ -395,7 +395,12 @@ const ProjectManagerDashboard = ({ refreshTrigger }) => {
                           {issue.assignedToName ? (
                             <div className="flex flex-col gap-1.5">
                               <div className="flex items-center gap-2">
-                                <span className="text-sm font-semibold text-slate-900">{issue.assignedToName}</span>
+                                <button
+                                  onClick={() => setSelectedDeveloper(issue.assignedTo)}
+                                  className="text-sm font-semibold text-slate-900 hover:text-blue-600 transition-colors text-left"
+                                >
+                                  {issue.assignedToName}
+                                </button>
                                 <span className={`px-1.5 py-0.5 rounded text-[8px] font-bold uppercase tracking-tighter border ${issue.assignedToCapacity < 30
                                   ? 'bg-rose-50 text-rose-600 border-rose-100'
                                   : issue.assignedToCapacity < 60

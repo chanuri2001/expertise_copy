@@ -184,6 +184,27 @@ def remove_pending_issue(developer_email: str, category: str, issue_id: str) -> 
     updated_doc = col.find_one({"email": developer_email})
     return DeveloperProfile(id=str(updated_doc["_id"]), **updated_doc)
 
+def update_pending_issue_status(developer_email: str, category: str, issue_id: str, status: str) -> DeveloperProfile:
+    """Update the status of a pending issue in a developer's profile."""
+    developer_email = developer_email.lower()
+    col = _get_collection()
+    doc = col.find_one({"email": developer_email})
+    if not doc:
+        raise ValueError(f"Developer with email {developer_email} not found")
+    
+    if "pendingIssues" not in doc or doc["pendingIssues"] is None:
+        return DeveloperProfile(id=str(doc["_id"]), **doc)
+    
+    if category in doc["pendingIssues"]:
+        for issue in doc["pendingIssues"][category]:
+            if issue.get("id") == issue_id:
+                issue["status"] = status
+                break
+        col.update_one({"email": developer_email}, {"$set": {"pendingIssues": doc["pendingIssues"]}})
+    
+    updated_doc = col.find_one({"email": developer_email})
+    return DeveloperProfile(id=str(updated_doc["_id"]), **updated_doc)
+
 
 def resolve_issue(developer_email: str, category: str, issue_id: str, resolved_at: Optional[str] = None, resolution_note: Optional[str] = None) -> DeveloperProfile:
     """Move a pending issue to resolved issues."""

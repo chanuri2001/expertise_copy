@@ -2,6 +2,7 @@ import os
 from pathlib import Path
 from typing import List, Optional
 from datetime import datetime, timedelta
+# Server Reload Trigger
 from fastapi import Depends, FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -177,6 +178,20 @@ def complete_issue_endpoint(
 ) -> Issue:
     """Mark issue as done/resolved by expert."""
     return service.mark_issue_complete(issue_id, developerEmail, resolutionNote)
+
+
+@app.post("/api/expertise/issues/{issue_id}/accept", response_model=Issue)
+def accept_issue_endpoint(
+    issue_id: str,
+    developerEmail: str = Query(..., description="Email of developer accepting the issue")
+) -> Issue:
+    """Accept an assigned issue."""
+    try:
+        return service.accept_issue(issue_id, developerEmail)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
 
 
 @app.get("/api/expertise/developers/{email}/issues", response_model=List[Issue])

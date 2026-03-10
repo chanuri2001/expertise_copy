@@ -144,6 +144,24 @@ const DeveloperProfileView = ({
   // Active Workflow UI is no longer present on this profile view. 
   // All issue resolution actions now happen in the NotificationIssueViewModal.
 
+  const handleAcceptIssue = async (issueId, category) => {
+    try {
+      const token = getAuthToken();
+      await axios.post(
+        `${API_BASE_URL}/api/expertise/issues/${issueId}/accept?developerEmail=${encodeURIComponent(developerEmail)}`,
+        {},
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      // Refresh local state
+      fetchAssignedIssues();
+      fetchProfile();
+      alert('Mission Accepted!');
+    } catch (err) {
+      alert(err.response?.data?.detail || 'Failed to accept mission.');
+    }
+  };
+
   const getExpertiseColor = (score) => {
     if (score >= 0.8) return 'bg-green-500';
     if (score >= 0.6) return 'bg-blue-500';
@@ -386,10 +404,110 @@ const DeveloperProfileView = ({
                 )}
               </div>
             )}
+
+            {/* Active Assignments */}
+            {!isBrief && assignedIssues.length > 0 && (
+              <div className="bg-white rounded-2xl p-8 shadow-sm border border-slate-200">
+                <div className="flex justify-between items-center mb-8 pb-4 border-b border-slate-100">
+                  <div>
+                    <h3 className="text-lg font-bold text-slate-900 tracking-tight flex items-center gap-2">
+                      <LayoutDashboard className="w-5 h-5 text-indigo-600" />
+                      Active Assignments
+                    </h3>
+                    <p className="text-xs text-slate-500 font-medium mt-1">Issues currently assigned to you</p>
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  {assignedIssues.map((issue) => (
+                    <div key={issue.id} className="p-6 bg-slate-50 border border-slate-200 rounded-2xl flex flex-col md:flex-row md:items-center justify-between gap-6 hover:border-blue-200 transition-all">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-3 mb-2">
+                          <span className={`px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-widest border ${getPriorityColor(issue.priority)}`}>
+                            {issue.priority}
+                          </span>
+                          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{issue.category}</span>
+                        </div>
+                        <h4 className="font-bold text-slate-900 mb-1">{issue.title}</h4>
+                        <p className="text-xs text-slate-500 line-clamp-1">{issue.description}</p>
+                      </div>
+
+                      <div className="flex items-center gap-4">
+                        {issue.status === 'assigned' ? (
+                          <button
+                            onClick={() => handleAcceptIssue(issue.id, issue.category)}
+                            disabled={!isSelf}
+                            className={`px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${isSelf
+                              ? 'bg-blue-600 text-white hover:bg-blue-700 shadow-lg shadow-blue-500/20 active:scale-[0.98]'
+                              : 'bg-slate-200 text-slate-400 cursor-not-allowed'
+                              }`}
+                          >
+                            Accept Mission
+                          </button>
+                        ) : (
+                          <div className="flex items-center gap-2 px-4 py-2 bg-emerald-50 border border-emerald-100 rounded-xl">
+                            <CheckCircle className="w-4 h-4 text-emerald-600" />
+                            <span className="text-[10px] font-black text-emerald-600 uppercase tracking-widest">In Progress</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Right Column: Statistics */}
           <div className="lg:col-span-4 space-y-8">
+            {/* Resource Utilization (Workload) */}
+            <div className={`bg-white rounded-2xl p-8 shadow-sm border p-8 transition-all ${dev.capacity_percentage < 30 ? 'border-rose-200 shadow-rose-900/5' : 'border-slate-200'}`}>
+              <div className="flex items-center gap-3 mb-8 pb-4 border-b border-slate-100">
+                <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${dev.capacity_percentage < 30 ? 'bg-rose-50 text-rose-600' : 'bg-blue-50 text-blue-600'}`}>
+                  <Clock size={18} />
+                </div>
+                <h3 className="text-sm font-bold text-slate-900 uppercase tracking-widest">Resource Load</h3>
+              </div>
+
+              <div className="space-y-6">
+                <div>
+                  <div className="flex justify-between items-end mb-3">
+                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Current Capacity</span>
+                    <span className={`text-xl font-black ${dev.capacity_percentage < 30 ? 'text-rose-600' : 'text-slate-900'}`}>
+                      {dev.capacity_percentage}%
+                    </span>
+                  </div>
+                  <div className="h-3 bg-slate-100 rounded-full overflow-hidden border border-slate-200/50">
+                    <div
+                      className={`h-full transition-all duration-1000 ease-out ${dev.capacity_percentage < 30 ? 'bg-gradient-to-r from-rose-500 to-rose-600' : 'bg-gradient-to-r from-blue-500 to-blue-600'}`}
+                      style={{ width: `${dev.capacity_percentage}%` }}
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="bg-slate-50 rounded-xl p-4 border border-slate-100">
+                    <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1">Workload Score</p>
+                    <p className="text-xl font-bold text-slate-900">{dev.workload_score?.toFixed(1) || '0.0'}</p>
+                  </div>
+                  <div className="bg-slate-50 rounded-xl p-4 border border-slate-100">
+                    <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1">Status</p>
+                    <p className={`text-[10px] font-black uppercase ${dev.status?.toLowerCase() === 'busy' ? 'text-amber-600' : 'text-emerald-600'}`}>
+                      {dev.status || 'Active'}
+                    </p>
+                  </div>
+                </div>
+
+                {dev.capacity_percentage < 30 && (
+                  <div className="p-3 bg-rose-50 border border-rose-100 rounded-xl flex items-center gap-3">
+                    <AlertCircle className="w-4 h-4 text-rose-500 shrink-0" />
+                    <p className="text-[10px] text-rose-700 font-bold uppercase leading-tight">Burnout Alert: Candidate is currently overloaded.</p>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Performance card (Efficiency) */}
             <div className="bg-white rounded-2xl p-8 shadow-sm border border-slate-200 relative overflow-hidden group">
               <div className="flex items-center gap-3 mb-8 pb-4 border-b border-slate-100">
                 <div className="w-8 h-8 bg-blue-50 text-blue-600 rounded-lg flex items-center justify-center">
@@ -421,7 +539,6 @@ const DeveloperProfileView = ({
               </div>
             </div>
           </div>
-
         </div>
       </div>
     </div>
