@@ -1,5 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Bell, CheckCircle, Clock, MoreHorizontal } from 'lucide-react';
+import { createPortal } from 'react-dom';
+import { 
+  Bell, CheckCircle, Clock, MoreHorizontal, 
+  Search, SlidersHorizontal, Info, MessageSquare, 
+  X, AlertCircle, ChevronRight
+} from 'lucide-react';
 import axios from 'axios';
 import { getAuthToken, getCurrentUser } from '../utils/userContext';
 
@@ -9,8 +14,8 @@ const NotificationsDropdown = ({ onNotificationClick }) => {
   const [notifications, setNotifications] = useState([]);
   const [isOpen, setIsOpen] = useState(false);
   const [loading, setLoading] = useState(false);
-  const dropdownRef = useRef(null);
-
+  const [searchQuery, setSearchQuery] = useState('');
+  
   const currentUser = getCurrentUser();
 
   const fetchNotifications = async () => {
@@ -42,16 +47,6 @@ const NotificationsDropdown = ({ onNotificationClick }) => {
     }
   }, [currentUser?.email]);
 
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
-        setIsOpen(false);
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
-
   const handleMarkAsRead = async (id, e) => {
     if (e) e.stopPropagation();
     try {
@@ -75,14 +70,27 @@ const NotificationsDropdown = ({ onNotificationClick }) => {
     setIsOpen(false);
   };
 
+  const handleClearAll = async () => {
+    // In a real app, this would call an API endpoint
+    setNotifications([]);
+    setIsOpen(false);
+  };
+
   if (!currentUser) return null;
 
   const unreadCount = notifications.filter(n => !n.read).length;
+  const filteredNotifications = notifications.filter(n => 
+    n.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
+    n.message.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
   return (
-    <div className="relative" ref={dropdownRef}>
+    <div className="relative">
       <button
-        onClick={() => setIsOpen(!isOpen)}
+        onClick={() => {
+            setIsOpen(true);
+            document.body.classList.add('modal-open');
+        }}
         className={`relative p-3 rounded-2xl transition-all duration-300 active:scale-90 ${
           isOpen ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/20' : 'text-slate-500 hover:text-indigo-600 hover:bg-indigo-50'
         }`}
@@ -94,105 +102,167 @@ const NotificationsDropdown = ({ onNotificationClick }) => {
         )}
       </button>
 
-      {isOpen && (
-        <div className="absolute right-0 mt-4 w-96 bg-white rounded-[2rem] shadow-[0_30px_60px_-15px_rgba(0,0,0,0.2)] border border-slate-200/60 z-[10005] overflow-hidden animate-in fade-in zoom-in-95 slide-in-from-top-4 duration-500">
-          <div className="bg-slate-900 px-8 py-6 flex justify-between items-center relative overflow-hidden">
-             <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/10 rounded-full blur-3xl -mr-16 -mt-16" />
+      {isOpen && createPortal(
+        <div className="fixed inset-0 z-[2147483647] flex items-center justify-center p-4">
+          <div 
+            className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-500"
+            onClick={() => {
+                setIsOpen(false);
+                document.body.classList.remove('modal-open');
+            }}
+          />
+          
+          <div className="bg-white rounded-[3rem] shadow-premium border border-slate-200/60 max-w-4xl w-full relative z-10 animate-in zoom-in-95 duration-500 overflow-hidden flex flex-col h-[85vh]">
             
-            <div>
-                <h3 className="text-[11px] font-black text-white uppercase tracking-[0.3em] leading-none">Intelligence Brief</h3>
-                <p className="text-[9px] text-indigo-400 font-bold uppercase tracking-widest mt-2">{unreadCount} New Signals Detected</p>
-            </div>
-            
-            <button className="p-2 text-white/40 hover:text-white transition-colors">
-                <MoreHorizontal size={18} />
-            </button>
-          </div>
-
-          <div className="max-h-[450px] overflow-y-auto custom-scrollbar bg-[#F8FAFC]">
-            {loading && notifications.length === 0 ? (
-              <div className="p-16 text-center">
-                <div className="w-10 h-10 border-4 border-slate-100 border-t-indigo-600 rounded-full animate-spin mx-auto mb-4" />
-                <p className="text-[10px] text-slate-400 font-black uppercase tracking-[0.3em] animate-pulse">Syncing Streams...</p>
-              </div>
-            ) : notifications.length === 0 ? (
-              <div className="p-16 text-center flex flex-col items-center">
-                <div className="w-20 h-20 bg-slate-100 rounded-[2rem] flex items-center justify-center text-slate-300 mb-6">
-                    <Bell size={40} className="opacity-20" />
-                </div>
-                <p className="text-[11px] text-slate-400 font-black uppercase tracking-[0.2em]">All Systems Clear</p>
-                <p className="text-[10px] text-slate-300 font-bold mt-2 uppercase">No new telemetry detected</p>
-              </div>
-            ) : (
-              <div className="divide-y divide-slate-100/60">
-                {notifications.map(notif => {
-                  const isAssignment = notif.type === 'assignment';
-                  const isResolution = notif.type === 'resolution';
-
-                  return (
-                    <div
-                      key={notif.id}
-                      onClick={() => handleNotifClick(notif)}
-                      className={`p-6 hover:bg-white transition-all cursor-pointer relative group ${!notif.read ? 'bg-white' : 'opacity-60'}`}
-                    >
-                      <div className="flex gap-5 relative z-10">
-                        <div className="flex-shrink-0">
-                          {isAssignment ? (
-                            <div className="w-12 h-12 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center shadow-inner border border-indigo-100 group-hover:scale-110 transition-transform">
-                              <Bell size={20} />
-                            </div>
-                          ) : isResolution ? (
-                            <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center shadow-inner border border-emerald-100 group-hover:scale-110 transition-transform">
-                              <CheckCircle size={20} />
-                            </div>
-                          ) : (
-                            <div className="w-12 h-12 rounded-2xl bg-slate-100 text-slate-600 flex items-center justify-center shadow-inner border border-slate-200 group-hover:scale-110 transition-transform">
-                              <Bell size={20} />
-                            </div>
-                          )}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center justify-between mb-2">
-                            <span className={`text-[8px] font-black uppercase tracking-[0.2em] px-2.5 py-1 rounded-lg border ${
-                                isAssignment ? 'bg-indigo-500/10 text-indigo-600 border-indigo-500/20' :
-                                isResolution ? 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20' :
-                                'bg-slate-500/10 text-slate-600 border-slate-500/20'
-                              }`}>
-                              {notif.type || 'SYSTEM'}
-                            </span>
-                             <span className="text-[9px] text-slate-400 font-black uppercase tracking-tighter">
-                              {notif.createdAt && !isNaN(new Date(notif.createdAt))
-                                ? new Date(notif.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
-                                : 'N/A'
-                              }
-                            </span>
-                          </div>
-                          <p className={`text-sm tracking-tight leading-tight uppercase ${!notif.read ? 'font-black text-slate-900' : 'font-bold text-slate-600'}`}>
-                            {notif.title}
-                          </p>
-                          <p className="text-[11px] text-slate-500 mt-2 font-medium leading-relaxed line-clamp-2">
-                            {notif.message}
-                          </p>
-                        </div>
-                        {!notif.read && (
-                          <div className="flex-shrink-0 pt-1">
-                            <div className={`w-2.5 h-2.5 rounded-full shadow-sm ${isAssignment ? 'bg-indigo-500' : isResolution ? 'bg-emerald-500' : 'bg-slate-400'}`} />
-                          </div>
-                        )}
-                      </div>
+            {/* Header: Intelligence Brief */}
+            <div className="bg-[#0F172A] px-12 py-10 shrink-0 relative overflow-hidden">
+                <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/10 rounded-full blur-3xl -mr-32 -mt-32" />
+                
+                <div className="flex justify-between items-center relative z-10">
+                    <div>
+                        <h2 className="text-3xl font-black text-white uppercase tracking-tight mb-2">Intelligence Brief</h2>
+                        <p className="text-[10px] font-bold text-indigo-400 uppercase tracking-[0.4em]">{unreadCount} New Signals Detected</p>
                     </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
+                    
+                    <div className="flex items-center gap-4">
+                        <button className="p-3 bg-white/5 hover:bg-white/10 rounded-2xl text-white/40 hover:text-white transition-all">
+                            <MoreHorizontal size={20} />
+                        </button>
+                        <button className="p-3 bg-white/5 hover:bg-white/10 rounded-2xl text-white/40 hover:text-white transition-all">
+                            <SlidersHorizontal size={20} />
+                        </button>
+                        <button 
+                            onClick={() => {
+                                setIsOpen(false);
+                                document.body.classList.remove('modal-open');
+                            }}
+                            className="p-3 bg-white/5 hover:bg-rose-500/20 rounded-2xl text-white/40 hover:text-rose-400 transition-all ml-2"
+                        >
+                            <X size={20} />
+                        </button>
+                    </div>
+                </div>
+            </div>
 
-          <div className="bg-white border-t border-slate-100 p-6 text-center">
-            <button className="w-full py-4 bg-slate-50 hover:bg-slate-900 hover:text-white text-slate-900 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] transition-all duration-300">
-              Clear All Signals
-            </button>
+            {/* Notification List Content */}
+            <div className="flex-1 overflow-y-auto custom-scrollbar bg-slate-50/30 p-8">
+                {loading && notifications.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center py-20 space-y-4">
+                        <div className="w-12 h-12 border-4 border-indigo-100 border-t-indigo-600 rounded-full animate-spin" />
+                        <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400 animate-pulse">Establishing Uplink...</p>
+                    </div>
+                ) : filteredNotifications.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center py-24 text-center">
+                        <div className="w-24 h-24 bg-white rounded-[2.5rem] shadow-soft border border-slate-100 flex items-center justify-center text-slate-200 mb-8">
+                            <Bell size={48} className="opacity-20" />
+                        </div>
+                        <h3 className="text-xl font-bold text-slate-900 uppercase tracking-tight">Systems Quiet</h3>
+                        <p className="text-[10px] text-slate-400 font-bold mt-2 uppercase tracking-widest">No telemetry signals found in this sector</p>
+                    </div>
+                ) : (
+                    <div className="space-y-4">
+                        {filteredNotifications.map((notif) => {
+                            const isResolution = notif.type === 'resolution';
+                            const isAssignment = notif.type === 'assignment';
+                            const isAlert = notif.type === 'alert' || notif.title.toLowerCase().includes('update') || notif.title.toLowerCase().includes('scheduled');
+                            const isComment = notif.type === 'comment' || notif.message.toLowerCase().includes('commented');
+
+                            return (
+                                <div
+                                    key={notif.id}
+                                    onClick={() => handleNotifClick(notif)}
+                                    className={`group bg-white border border-slate-100 rounded-[2rem] p-6 hover:shadow-premium hover:-translate-y-0.5 transition-all cursor-pointer relative ${!notif.read ? 'border-l-4 border-l-indigo-500' : 'opacity-80'}`}
+                                >
+                                    <div className="flex items-start gap-6">
+                                        <div className="shrink-0 mt-1">
+                                            {isResolution ? (
+                                                <div className="w-14 h-14 rounded-2xl bg-emerald-50 text-emerald-600 border border-emerald-100 flex items-center justify-center shadow-inner group-hover:scale-105 transition-transform">
+                                                    <CheckCircle size={24} />
+                                                </div>
+                                            ) : isAssignment ? (
+                                                <div className="w-14 h-14 rounded-2xl bg-indigo-50 text-indigo-600 border border-indigo-100 flex items-center justify-center shadow-inner group-hover:scale-105 transition-transform">
+                                                    <Bell size={24} />
+                                                </div>
+                                            ) : isAlert ? (
+                                                <div className="w-14 h-14 rounded-2xl bg-slate-100 text-slate-600 border border-slate-200 flex items-center justify-center shadow-inner group-hover:scale-105 transition-transform">
+                                                    <Info size={24} />
+                                                </div>
+                                            ) : (
+                                                <div className="w-14 h-14 rounded-2xl bg-blue-50 text-blue-600 border border-blue-100 flex items-center justify-center shadow-inner group-hover:scale-105 transition-transform">
+                                                    <MessageSquare size={24} />
+                                                </div>
+                                            )}
+                                        </div>
+                                        
+                                        <div className="flex-1 min-w-0">
+                                            <div className="flex items-center justify-between mb-3">
+                                                <div className="flex items-center gap-3">
+                                                    <span className={`text-[8px] font-black uppercase tracking-[0.2em] px-2.5 py-1 rounded-lg border shadow-sm ${
+                                                        isResolution ? 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20' :
+                                                        isAssignment ? 'bg-indigo-500/10 text-indigo-600 border-indigo-500/20' :
+                                                        isAlert ? 'bg-slate-900 text-white border-slate-900' :
+                                                        'bg-blue-500/10 text-blue-600 border-blue-500/20'
+                                                    }`}>
+                                                        {isResolution ? 'RESOLUTION' : isAssignment ? 'ASSIGNMENT' : isAlert ? 'SYSTEM ALERT' : 'COMMENT'}
+                                                    </span>
+                                                    <h4 className="text-sm font-black text-slate-900 uppercase tracking-tight truncate">{notif.title}</h4>
+                                                </div>
+                                                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter shrink-0">
+                                                    {notif.createdAt && !isNaN(new Date(notif.createdAt))
+                                                        ? new Date(notif.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+                                                        : 'APR 18'
+                                                    }
+                                                </span>
+                                            </div>
+                                            <p className="text-[11px] text-slate-500 font-medium leading-relaxed">
+                                                {notif.message}
+                                            </p>
+                                        </div>
+                                        
+                                        {!notif.read && (
+                                            <div className="shrink-0 self-center">
+                                                <div className="w-3 h-3 bg-indigo-600 rounded-full shadow-[0_0_10px_rgba(79,70,229,0.5)] animate-pulse" />
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+                )}
+            </div>
+
+            {/* Footer: Search & Actions */}
+            <div className="bg-white border-t border-slate-100 p-10 shrink-0 space-y-8 relative z-10">
+                <div className="max-w-3xl mx-auto flex items-center gap-6">
+                    <div className="flex-1 relative group">
+                        <Search className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-600 transition-colors" size={20} />
+                        <input 
+                            type="text"
+                            placeholder="Search / Filter"
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            className="w-full bg-slate-50 border border-slate-100 rounded-[2rem] py-5 pl-16 pr-8 text-sm font-bold text-slate-900 focus:bg-white focus:ring-4 focus:ring-indigo-500/5 focus:border-indigo-500 outline-none transition-all placeholder:text-slate-300 placeholder:uppercase placeholder:tracking-[0.2em]"
+                        />
+                        <div className="absolute right-6 top-1/2 -translate-y-1/2 h-8 w-px bg-slate-200" />
+                        <button className="absolute right-10 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-900 transition-colors">
+                            <SlidersHorizontal size={18} />
+                        </button>
+                    </div>
+                </div>
+
+                <div className="flex justify-center">
+                    <button 
+                        onClick={handleClearAll}
+                        className="bg-[#1D4ED8] hover:bg-indigo-700 text-white px-12 py-5 rounded-[2rem] text-[11px] font-black uppercase tracking-[0.3em] transition-all shadow-xl shadow-blue-500/20 active:scale-95 flex items-center gap-4"
+                    >
+                        Clear All Signals
+                    </button>
+                </div>
+            </div>
           </div>
-        </div>
+        </div>,
+        document.getElementById('portal-root') || document.body
       )}
     </div>
   );
