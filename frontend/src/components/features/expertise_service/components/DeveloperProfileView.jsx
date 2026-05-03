@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { X, User, Mail, TrendingUp, CheckCircle, Clock, AlertCircle, FileCheck, LayoutDashboard, Star, Award } from 'lucide-react';
+import { X, User, Mail, TrendingUp, CheckCircle, Clock, AlertCircle, FileCheck, LayoutDashboard, Star, Award, Zap, Shield, ChevronRight } from 'lucide-react';
 import axios from 'axios';
 import { getAuthToken, getCurrentUser } from '../utils/userContext';
 
@@ -201,12 +201,12 @@ const DeveloperProfileView = ({
           <div>
             <div className="flex items-center gap-4 mb-3">
               <h2 className="text-3xl font-bold text-white tracking-tight uppercase leading-none">{dev.name}</h2>
-              <span className={`px-2.5 py-1 rounded-md text-[9px] font-bold uppercase tracking-widest border ${dev.status?.toLowerCase() === 'active'
-                ? 'bg-success/10 border-success/20 text-success'
-                : 'bg-warning/10 border-warning/20 text-warning'
-                }`}>
-                {dev.status || 'Active'}
-              </span>
+              <div className="flex items-center gap-3 bg-white/5 border border-white/10 px-4 py-1.5 rounded-full backdrop-blur-md transition-all hover:bg-white/10">
+                <div className={`w-1.5 h-1.5 rounded-full animate-pulse ${dev.status?.toLowerCase() === 'active' ? 'bg-emerald-400 shadow-[0_0_10px_rgba(52,211,153,0.5)]' : 'bg-amber-400 shadow-[0_0_10px_rgba(251,191,36,0.5)]'}`} />
+                <span className="text-[9px] font-black text-white/80 uppercase tracking-widest">
+                  {dev.status || 'Active'}
+                </span>
+              </div>
             </div>
             <div className="flex items-center gap-6 text-slate-400">
               <div className="flex items-center gap-2">
@@ -351,62 +351,132 @@ const DeveloperProfileView = ({
 
           {/* Right Column */}
           <div className="lg:col-span-4 space-y-8">
-            {/* Accolades */}
-            <div className="bg-slate-900 rounded-4xl p-8 shadow-premium border border-slate-800 group">
-              <div className="flex items-center gap-4 mb-8 pb-6 border-b border-white/5">
-                <div className="w-10 h-10 bg-warning/10 text-warning rounded-xl flex items-center justify-center border border-warning/20 transition-transform group-hover:scale-110">
-                  <Award size={20} />
+            {/* Accolades Section */}
+            <div className="bg-white rounded-4xl p-8 shadow-soft border border-slate-100 group transition-all hover:shadow-premium relative overflow-hidden">
+              {/* Decorative Accent */}
+              <div className="absolute top-0 left-0 w-1 h-full bg-brand/10" />
+              
+              <div className="flex items-center justify-between mb-10 pb-6 border-b border-slate-50">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 bg-slate-900 text-white rounded-2xl flex items-center justify-center shadow-lg transition-transform group-hover:scale-110">
+                    <Award size={24} />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-bold text-slate-900 uppercase tracking-tight leading-none">Accolades</h3>
+                    <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-1.5">Achievement Terminal</p>
+                  </div>
                 </div>
-                <h3 className="text-base font-bold text-white uppercase tracking-tight">Accolades</h3>
+                <div className="flex items-center gap-2 px-3 py-1 bg-emerald-50 rounded-lg border border-emerald-100">
+                  <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
+                  <span className="text-[9px] font-black text-emerald-600 uppercase tracking-widest">Active</span>
+                </div>
               </div>
               
-              <div className="flex flex-wrap gap-3">
+              <div className="flex flex-wrap gap-4 mb-10">
                 {(!dev.earnedBadges || dev.earnedBadges.length === 0) ? (
-                  <p className="text-[10px] font-bold uppercase tracking-widest text-slate-600 w-full text-center py-6">No badges earned</p>
+                  <div className="w-full py-10 text-center bg-slate-50/50 rounded-3xl border border-dashed border-slate-200">
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">No medals acquired</p>
+                  </div>
                 ) : (
-                  dev.earnedBadges.map((badge, idx) => (
-                    <div key={idx} className="flex items-center gap-2 bg-white/5 px-4 py-2 rounded-xl border border-white/10 hover:bg-white/10 transition-colors">
-                      <Star size={12} className="text-warning fill-warning" />
-                      <span className="text-[9px] font-bold uppercase tracking-widest text-white">{badge}</span>
-                    </div>
-                  ))
+                  dev.earnedBadges.map((badge, idx) => {
+                    const isMaster = badge.toLowerCase().includes('master');
+                    const isExpert = badge.toLowerCase().includes('expert');
+                    const isSpecialist = badge.toLowerCase().includes('specialist');
+                    
+                    let badgeStyles = "bg-slate-50 text-slate-600 border-slate-200";
+                    let BadgeIcon = Star;
+                    
+                    if (isMaster) {
+                      badgeStyles = "bg-indigo-50/50 text-brand border-indigo-100 shadow-[0_0_15px_rgba(79,70,229,0.05)]";
+                      BadgeIcon = Zap;
+                    } else if (isExpert) {
+                      badgeStyles = "bg-amber-50/50 text-amber-600 border-amber-100 shadow-[0_0_15px_rgba(217,119,6,0.05)]";
+                      BadgeIcon = Shield;
+                    } else if (isSpecialist) {
+                      badgeStyles = "bg-emerald-50/50 text-emerald-600 border-emerald-100 shadow-[0_0_15px_rgba(5,150,105,0.05)]";
+                      BadgeIcon = Star;
+                    }
+
+                    return (
+                      <div key={idx} className={`flex items-center gap-3 px-6 py-3.5 rounded-2xl border transition-all hover:scale-105 hover:bg-white hover:shadow-premium group/badge ${badgeStyles}`}>
+                        <BadgeIcon size={14} className={`${isMaster ? "fill-brand/10" : isExpert ? "fill-amber-500/10" : "fill-emerald-500/10"} transition-transform group-hover/badge:rotate-12`} />
+                        <span className="text-[10px] font-black uppercase tracking-[0.2em]">{badge}</span>
+                      </div>
+                    );
+                  })
                 )}
+              </div>
+
+              {/* Performance Milestone Tracker */}
+              <div className="bg-slate-900 rounded-[2.5rem] p-10 relative overflow-hidden shadow-2xl">
+                <div className="absolute top-0 right-0 w-48 h-48 bg-brand/10 rounded-full blur-[80px] -mr-24 -mt-24" />
+                
+                <div className="flex justify-between items-start mb-8 relative z-10">
+                  <div className="space-y-1">
+                    <h4 className="text-[9px] font-black text-indigo-400 uppercase tracking-[0.3em]">Operational Milestone</h4>
+                    <p className="text-sm font-bold text-white tracking-tight">Operational Lead</p>
+                  </div>
+                  <div className="flex flex-col items-end gap-1">
+                    <span className="text-xs font-black text-white">
+                      {Math.round(Math.min(100, (Object.values(dev.jiraIssuesSolved || {}).reduce((a, b) => a + b, 0) / 25) * 100))}%
+                    </span>
+                    <span className="text-[8px] font-bold text-slate-500 uppercase tracking-widest">
+                      {Object.values(dev.jiraIssuesSolved || {}).reduce((a, b) => a + b, 0)} / 25 UNITS
+                    </span>
+                  </div>
+                </div>
+
+                <div className="h-2.5 bg-white/5 rounded-full overflow-hidden border border-white/5 shadow-inner mb-8 relative z-10">
+                  <div 
+                    className="h-full bg-gradient-to-r from-indigo-500 to-brand rounded-full shadow-[0_0_15px_rgba(79,70,229,0.4)] transition-all duration-1000"
+                    style={{ width: `${Math.min(100, (Object.values(dev.jiraIssuesSolved || {}).reduce((a, b) => a + b, 0) / 25) * 100)}%` }}
+                  />
+                </div>
+
+                <div className="bg-white/5 rounded-2xl p-5 border border-white/5 relative z-10">
+                    <div className="flex items-center gap-4 text-[9px] font-bold text-indigo-200 uppercase tracking-[0.2em] leading-relaxed">
+                        <div className="w-6 h-6 bg-indigo-500/20 text-indigo-400 rounded-lg flex items-center justify-center shrink-0 border border-indigo-500/20">
+                            <ChevronRight size={14} />
+                        </div>
+                        <span>Secure {Math.max(0, 25 - Object.values(dev.jiraIssuesSolved || {}).reduce((a, b) => a + b, 0))} more units to unlock terminal elevation.</span>
+                    </div>
+                </div>
               </div>
             </div>
 
             {/* Resource Load */}
-            <div className="bg-white rounded-4xl p-8 shadow-soft border border-slate-100 group">
+            <div className="bg-white rounded-4xl p-8 shadow-soft border border-slate-100 group transition-all hover:shadow-premium">
               <div className="flex items-center gap-4 mb-10">
-                <div className="w-10 h-10 bg-indigo-50 text-brand rounded-xl flex items-center justify-center transition-transform group-hover:scale-110">
-                  <Clock size={20} />
+                <div className="w-12 h-12 bg-indigo-50 text-brand rounded-2xl flex items-center justify-center transition-transform group-hover:scale-110 border border-indigo-100">
+                  <Clock size={24} />
                 </div>
-                <h3 className="text-base font-bold text-slate-900 uppercase tracking-tight">Resource Load</h3>
+                <h3 className="text-lg font-bold text-slate-900 uppercase tracking-tight">Resource Load</h3>
               </div>
 
               <div className="space-y-6">
                 <div>
                   <div className="flex justify-between items-end mb-4">
-                    <span className="text-[9px] font-bold uppercase tracking-widest text-slate-400">Capacity</span>
-                    <span className={`text-3xl font-bold tracking-tight ${dev.capacity_percentage < 30 ? 'text-rose-600' : 'text-slate-900'}`}>
+                    <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Capacity</span>
+                    <span className={`text-3xl font-black tracking-tight ${dev.capacity_percentage < 30 ? 'text-rose-600' : 'text-slate-900'}`}>
                       {dev.capacity_percentage}%
                     </span>
                   </div>
-                  <div className="h-3 bg-slate-100 rounded-full overflow-hidden border border-slate-200/50">
+                  <div className="h-3 bg-slate-100 rounded-full overflow-hidden border border-slate-200/50 shadow-inner">
                     <div
-                      className={`h-full rounded-full transition-all duration-1000 ${dev.capacity_percentage < 30 ? 'bg-rose-500' : 'bg-brand'}`}
+                      className={`h-full rounded-full transition-all duration-1000 shadow-sm ${dev.capacity_percentage < 30 ? 'bg-gradient-to-r from-rose-500 to-rose-400' : 'bg-gradient-to-r from-indigo-500 to-brand'}`}
                       style={{ width: `${dev.capacity_percentage}%` }}
                     />
                   </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
-                  <div className="bg-slate-50 rounded-2xl p-4 border border-slate-100">
-                    <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1">Stress</p>
-                    <p className="text-xl font-bold text-slate-900">{dev.workload_score?.toFixed(1) || '0.0'}</p>
+                  <div className="bg-slate-50/50 rounded-2xl p-5 border border-slate-100 group-hover:bg-white transition-colors">
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Stress</p>
+                    <p className="text-2xl font-black text-slate-900">{dev.workload_score?.toFixed(1) || '0.0'}</p>
                   </div>
-                  <div className="bg-slate-50 rounded-2xl p-4 border border-slate-100">
-                    <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1">State</p>
-                    <p className={`text-[10px] font-bold uppercase tracking-widest ${dev.status?.toLowerCase() === 'busy' ? 'text-warning' : 'text-success'}`}>
+                  <div className="bg-slate-50/50 rounded-2xl p-5 border border-slate-100 group-hover:bg-white transition-colors">
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">State</p>
+                    <p className={`text-[11px] font-black uppercase tracking-widest ${dev.status?.toLowerCase() === 'busy' ? 'text-amber-500' : 'text-emerald-500'}`}>
                       {dev.status || 'Active'}
                     </p>
                   </div>
@@ -414,32 +484,34 @@ const DeveloperProfileView = ({
               </div>
             </div>
 
-            {/* Stats Card */}
-            <div className="bg-white rounded-4xl p-8 shadow-soft border border-slate-100 group">
+            {/* Efficiency Stats Card */}
+            <div className="bg-white rounded-4xl p-8 shadow-soft border border-slate-100 group transition-all hover:shadow-premium">
               <div className="flex items-center gap-4 mb-10">
-                <div className="w-10 h-10 bg-success/10 text-success rounded-xl flex items-center justify-center transition-transform group-hover:scale-110">
-                  <FileCheck size={20} />
+                <div className="w-12 h-12 bg-emerald-50 text-emerald-600 rounded-2xl flex items-center justify-center transition-transform group-hover:scale-110 border border-emerald-100">
+                  <FileCheck size={24} />
                 </div>
-                <h3 className="text-base font-bold text-slate-900 uppercase tracking-tight">Efficiency</h3>
+                <h3 className="text-lg font-bold text-slate-900 uppercase tracking-tight">Efficiency</h3>
               </div>
 
-              <div className="mb-8">
-                <p className="text-5xl font-bold text-slate-900 tracking-tight mb-1">
-                  {Object.values(dev.jiraIssuesSolved || {}).reduce((a, b) => a + b, 0)}
-                </p>
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Units Resolved</p>
+              <div className="mb-10">
+                <div className="flex items-baseline gap-2">
+                  <p className="text-6xl font-black text-slate-900 tracking-tighter">
+                    {Object.values(dev.jiraIssuesSolved || {}).reduce((a, b) => a + b, 0)}
+                  </p>
+                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Units Resolved</span>
+                </div>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
-                <div className="bg-slate-50 rounded-2xl p-4 border border-slate-100">
-                  <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1">Commits</p>
-                  <p className="text-xl font-bold text-slate-900">
+                <div className="bg-slate-50/50 rounded-2xl p-5 border border-slate-100 group-hover:bg-white transition-colors">
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Commits</p>
+                  <p className="text-2xl font-black text-slate-900">
                     {Object.values(dev.githubCommits || {}).reduce((a, b) => a + b, 0)}
                   </p>
                 </div>
-                <div className="bg-slate-50 rounded-2xl p-4 border border-slate-100">
-                  <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1">Precision</p>
-                  <p className="text-xl font-bold text-brand">
+                <div className="bg-slate-50/50 rounded-2xl p-5 border border-slate-100 group-hover:bg-white transition-colors">
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Precision</p>
+                  <p className="text-2xl font-black text-brand">
                     {dev.efficiency ? Math.round(dev.efficiency * 100) : '94'}%
                   </p>
                 </div>

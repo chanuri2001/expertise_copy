@@ -58,23 +58,32 @@ const ExpertiseRecommendationHomePage = ({ module }) => {
     setRecommendations([]);
     setLastCreatedIssue(null);
 
-    if (!description.trim()) {
-      setError('Please enter an Objective Description.');
+    // Neural Handshake & Validation
+    if (!currentUser?.email) {
+      setError('AUTHENTICATION_FAILED: Please establish a secure personnel link before initiating operations.');
       return;
     }
 
-    if (!currentUser?.email) {
-      setError('Please login to submit an issue (so we can track your profile and history).');
+    const sanitizedTitle = title.trim();
+    const sanitizedDesc = description.trim();
+
+    if (sanitizedTitle.length < 5) {
+      setError('SIGNAL_ERROR: Mission identifier too brief. Provide at least 5 characters.');
+      return;
+    }
+
+    if (sanitizedDesc.length < 15) {
+      setError('DATA_INSUFFICIENT: Description requires more telemetry (min 15 chars) for accurate category prediction.');
       return;
     }
 
     try {
       setLoading(true);
       const issueRes = await axios.post(`${API_BASE_URL}/api/expertise/issues`, {
-        title: title || `Issue in ${new Date().toLocaleDateString()}`,
-        description,
-        submittedBy: currentUser?.email || '',
-        submittedByName: currentUser?.name || 'Anonymous',
+        title: sanitizedTitle,
+        description: sanitizedDesc,
+        submittedBy: currentUser.email,
+        submittedByName: currentUser.name,
         priority: priority,
       }, { headers: authHeaders() });
 
@@ -254,22 +263,33 @@ const ExpertiseRecommendationHomePage = ({ module }) => {
                   </div>
 
                   <div className="space-y-3">
-                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] ml-1">Severity Level</label>
-                    <div className="grid grid-cols-4 gap-3">
-                       {['low', 'medium', 'high', 'critical'].map((p) => (
-                        <button
-                          key={p}
-                          type="button"
-                          onClick={() => setPriority(p)}
-                          className={`py-3 px-1 rounded-xl text-[10px] font-bold uppercase tracking-widest border transition-all duration-300 ${priority === p
-                            ? 'bg-brand border-brand text-white shadow-soft scale-[1.02]'
-                            : 'bg-white border-slate-200 text-slate-400 hover:border-brand/50 hover:text-brand'
-                            }`}
-                        >
-                          {p}
-                        </button>
-                      ))}
-                    </div>
+                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] ml-1">Priority Level</label>
+                      <div className="grid grid-cols-4 gap-3">
+                        {['low', 'medium', 'high', 'critical'].map((p) => {
+                          const isActive = priority === p;
+                          const styles = {
+                            low: { active: 'bg-emerald-50 border-emerald-200 text-emerald-700', hover: 'hover:text-emerald-600 hover:border-emerald-100' },
+                            medium: { active: 'bg-amber-50 border-amber-200 text-amber-700', hover: 'hover:text-amber-600 hover:border-amber-100' },
+                            high: { active: 'bg-rose-50 border-rose-200 text-rose-700', hover: 'hover:text-rose-600 hover:border-rose-100' },
+                            critical: { active: 'bg-slate-900 border-slate-900 text-white shadow-lg', hover: 'hover:text-slate-900 hover:border-slate-300' }
+                          };
+                          
+                          return (
+                            <button
+                              key={p}
+                              type="button"
+                              onClick={() => setPriority(p)}
+                              className={`py-3 px-1 rounded-xl text-[10px] font-black uppercase tracking-widest border transition-all duration-300 ${
+                                isActive 
+                                  ? `${styles[p].active} scale-[1.02]`
+                                  : `bg-white border-slate-100 text-slate-400 ${styles[p].hover}`
+                              }`}
+                            >
+                              {p}
+                            </button>
+                          );
+                        })}
+                      </div>
                   </div>
 
                   <div className="space-y-3">
@@ -311,7 +331,7 @@ const ExpertiseRecommendationHomePage = ({ module }) => {
                     ) : (
                       <Brain size={18} className="group-hover:scale-110 transition-transform" />
                     )}
-                    Establish Neural Sync
+                    Submit Issue
                   </button>
                 </form>
               </div>
