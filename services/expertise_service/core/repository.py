@@ -35,6 +35,8 @@ def upsert_developer(profile_in: DeveloperProfileIn) -> DeveloperProfile:
         doc["status"] = "Active"
     if "efficiency" not in doc or doc["efficiency"] is None:
         doc["efficiency"] = 0.94
+    if "earnedBadges" not in doc or doc["earnedBadges"] is None:
+        doc["earnedBadges"] = []
     result = col.update_one({"email": doc["email"]}, {"$set": doc}, upsert=True)
     stored = col.find_one({"email": doc["email"]})
     return DeveloperProfile(id=str(stored["_id"]), **stored)
@@ -61,6 +63,8 @@ def get_developer_by_email(email: str) -> Optional[DeveloperProfile]:
         doc["status"] = "Active"
     if "efficiency" not in doc or doc["efficiency"] is None:
         doc["efficiency"] = 0.94
+    if "earnedBadges" not in doc or doc["earnedBadges"] is None:
+        doc["earnedBadges"] = []
     return DeveloperProfile(id=str(doc["_id"]), **doc)
 
 
@@ -83,6 +87,8 @@ def list_developers() -> List[DeveloperProfile]:
             doc["status"] = "Active"
         if "efficiency" not in doc or doc["efficiency"] is None:
             doc["efficiency"] = 0.94
+        if "earnedBadges" not in doc or doc["earnedBadges"] is None:
+            doc["earnedBadges"] = []
         devs.append(DeveloperProfile(id=str(doc["_id"]), **doc))
     return devs
 
@@ -101,6 +107,8 @@ def update_preferences(developer_email: str, preferences: CategoryPreferences) -
         doc["resolvedIssues"] = {}
     if "workHistory" not in doc or doc["workHistory"] is None:
         doc["workHistory"] = []
+    if "earnedBadges" not in doc or doc["earnedBadges"] is None:
+        doc["earnedBadges"] = []
     return DeveloperProfile(id=str(doc["_id"]), **doc)
 
 
@@ -292,28 +300,48 @@ def get_resolved_issues_by_category(developer_email: str, category: str) -> List
     return [ResolvedIssue(**issue) for issue in doc.resolvedIssues[category]]
 
 
-def increment_expertise_score(developer_email: str, category: str, increment: float = 0.02) -> float:
-    """Increment expertise score for a category, capped at 1.0."""
+def increment_expertise_score(developer_email: str, category: str, increment: float = 0.02) -> tuple:
+    """Increment expertise score for a category, capped at 1.0, and return (old_score, new_score)."""
     developer_email = developer_email.lower()
     col = _get_collection()
     
-    # 1. Atomic increment
+    # Get current score first
+    doc = col.find_one({"email": developer_email})
+    old_score = doc.get("expertise", {}).get(category, 0.0) if doc else 0.0
+    
+    # Calculate new score
+    new_score = old_score + increment
+    if new_score > 1.0:
+        new_score = 1.0
+        
+    # Update directly
     col.update_one(
         {"email": developer_email},
-        {"$inc": {f"expertise.{category}": increment}}
+        {"$set": {f"expertise.{category}": round(new_score, 4)}}
     )
     
-    # 2. Enforce cap and return new value
-    doc = col.find_one({"email": developer_email})
-    current_score = doc.get("expertise", {}).get(category, 0.0)
+    return round(old_score, 4), round(new_score, 4)
+
+
+def add_badge_to_developer(developer_email: str, badge: str) -> DeveloperProfile:
+    """Permanently adds a badge to the developer's profile."""
+    developer_email = developer_email.lower()
+    col = _get_collection()
     
-    if current_score > 1.0:
-        col.update_one(
-            {"email": developer_email},
-            {"$set": {f"expertise.{category}": 1.0}}
-        )
-        return 1.0
+    doc = col.find_one({"email": developer_email})
+    if not doc:
+        raise ValueError(f"Developer with email {developer_email} not found")
         
-    return round(current_score, 4)
+    # Atomic push to array ensuring no duplicates
+    col.update_one(
+        {"email": developer_email},
+        {"$addToSet": {"earnedBadges": badge}}
+    )
+    
+    updated_doc = col.find_one({"email": developer_email})
+    if "earnedBadges" not in updated_doc or updated_doc["earnedBadges"] is None:
+        updated_doc["earnedBadges"] = []
+        
+    return DeveloperProfile(id=str(updated_doc["_id"]), **updated_doc)
 
 

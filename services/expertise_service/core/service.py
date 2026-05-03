@@ -18,6 +18,7 @@ from .repository import (
     upsert_developer,
     update_pending_issue_status,
     increment_expertise_score,
+    add_badge_to_developer,
 )
 from .issue_repository import (
     create_issue,
@@ -608,16 +609,43 @@ def mark_issue_complete(issue_id: str, developer_email: str, resolution_note: Op
             resolve_issue(developer_email, issue.category, issue_id, resolution_note=resolution_note)
             
             # Continuous Learning: Increment expertise score
-            new_score = increment_expertise_score(developer_email, issue.category)
+            old_score, new_score = increment_expertise_score(developer_email, issue.category)
+            
+            # Calculate delta and percentage
+            delta = new_score - old_score
+            delta_pct = delta * 100
             
             # Notify developer of growth
             create_notification(
                 user_email=developer_email,
                 title="Expertise Level Up!",
-                message=f"By resolving '{issue.title}', your {issue.category} expertise has increased to {new_score * 100:.0f}%. Keep it up!",
+                message=f"By resolving '{issue.title}', your {issue.category} expertise has increased by {delta_pct:.0f}% to {new_score * 100:.0f}%. Keep it up!",
                 type="system",
                 related_issue_id=issue.id
             )
+
+            # Check for mastery threshold
+            if new_score >= 0.90 and old_score < 0.90:
+                # Suggest a skill badge/certificate
+                suggested_badge = f"{issue.category} Master"
+                
+                # Add the badge permanently to the developer's profile
+                add_badge_to_developer(developer_email, suggested_badge)
+                
+                # Notify managers
+                try:
+                    all_devs = list_developers()
+                    managers = [d for d in all_devs if getattr(d, "role", "developer") == "manager"]
+                    for mgr in managers:
+                        create_notification(
+                            user_email=mgr.email,
+                            title=f"Expertise Mastery Reached: {developer_email}",
+                            message=f"{developer_email} has reached 90% expertise in {issue.category} (Delta: +{delta_pct:.0f}%). Suggested Certification Path: {suggested_badge}.",
+                            type="system",
+                            related_issue_id=issue.id
+                        )
+                except Exception as e:
+                    print(f"Error in manager mastery notification: {e}")
 
             # Add a lightweight history record (so future recommendations learn from this)
             try:

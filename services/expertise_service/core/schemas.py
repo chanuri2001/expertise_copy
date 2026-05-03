@@ -100,6 +100,7 @@ class DeveloperProfileIn(BaseModel):
     workHistory: Optional[List[WorkHistoryItem]] = None
     pendingIssues: Optional[Dict[str, List[PendingIssue]]] = None
     resolvedIssues: Optional[Dict[str, List[ResolvedIssue]]] = None
+    earnedBadges: Optional[List[str]] = Field(default_factory=list)
 
 
 class DeveloperProfile(DeveloperProfileIn):
