@@ -304,14 +304,14 @@ const ExpertiseRecommendationHomePage = ({ module }) => {
                   <button
                     type="submit"
                     disabled={loading}
-                    className="w-full flex items-center justify-center gap-4 bg-brand hover:bg-brand-dark text-white py-4 rounded-xl font-bold uppercase tracking-widest text-xs transition-all shadow-soft active:scale-[0.98] disabled:opacity-50"
+                    className="w-full flex items-center justify-center gap-4 bg-slate-900 hover:bg-brand text-white py-5 rounded-2xl font-black uppercase tracking-[0.3em] text-[10px] transition-all shadow-premium active:scale-[0.98] disabled:opacity-50 group"
                   >
                     {loading ? (
                       <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                     ) : (
-                      <Brain size={18} />
+                      <Brain size={18} className="group-hover:scale-110 transition-transform" />
                     )}
-                    Sync & Analyze Expertise
+                    Establish Neural Sync
                   </button>
                 </form>
               </div>
