@@ -11,7 +11,7 @@ import ErrorBoundary from '../components/ErrorBoundary';
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000';
 
 const ExpertiseRecommendationHomePage = ({ module }) => {
-  const [activeTab, setActiveTab] = useState('submit'); // 'submit', 'dashboard', 'missions'
+  const [activeTab, setActiveTab] = useState('submit'); // 'submit', 'dashboard', 'issues'
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [priority, setPriority] = useState('medium');
@@ -68,7 +68,7 @@ const ExpertiseRecommendationHomePage = ({ module }) => {
     const sanitizedDesc = description.trim();
 
     if (sanitizedTitle.length < 5) {
-      setError('SIGNAL_ERROR: Mission identifier too brief. Provide at least 5 characters.');
+      setError('SIGNAL_ERROR: issue identifier too brief. Provide at least 5 characters.');
       return;
     }
 
@@ -141,7 +141,7 @@ const ExpertiseRecommendationHomePage = ({ module }) => {
       setSuccessMessage(`Issue assigned to ${developerName}! Check their profile to see it.`);
       setTimeout(() => setSuccessMessage(''), 5000);
     } catch (err) {
-      setError(err.response?.data?.detail || 'Failed to Assign Mission. Please try again.');
+      setError(err.response?.data?.detail || 'Failed to Assign Issue. Please try again.');
     } finally {
       setAssigningIssue({ ...assigningIssue, [developerEmail]: false });
     }
@@ -203,15 +203,15 @@ const ExpertiseRecommendationHomePage = ({ module }) => {
           </button>
           {currentUser && !isManager && (
             <button
-              onClick={() => setActiveTab('missions')}
-              className={`flex items-center gap-2.5 px-2 py-4 text-xs font-bold uppercase tracking-widest transition-all relative ${activeTab === 'missions'
+              onClick={() => setActiveTab('issues')}
+              className={`flex items-center gap-2.5 px-2 py-4 text-xs font-bold uppercase tracking-widest transition-all relative ${activeTab === 'issues'
                 ? 'text-brand'
                 : 'text-slate-400 hover:text-slate-600'
                 }`}
             >
               <User size={16} />
               My Profile
-              {activeTab === 'missions' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-brand rounded-full" />}
+              {activeTab === 'issues' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-brand rounded-full" />}
             </button>
           )}
           {isManager && (
@@ -231,7 +231,7 @@ const ExpertiseRecommendationHomePage = ({ module }) => {
 
         {activeTab === 'dashboard' ? (
           <ProjectManagerDashboard refreshTrigger={refreshTrigger} />
-        ) : activeTab === 'missions' ? (
+        ) : activeTab === 'issues' ? (
           <div className="bg-white rounded-3xl shadow-xl border border-slate-200/60 overflow-hidden animate-in fade-in slide-in-from-bottom-8 duration-700">
             <DeveloperProfileView
               developerEmail={currentUser?.email}
@@ -564,7 +564,7 @@ const ExpertiseRecommendationHomePage = ({ module }) => {
 };
 
 /**
- * Modern Mission Briefing Modal for deep-linked notifications
+ * Modern Issues Briefing Modal for deep-linked notifications
  */
 const NotificationIssueViewModal = ({ issueId, onClose, onResolved }) => {
   const [issue, setIssue] = useState(null);
@@ -646,9 +646,9 @@ const NotificationIssueViewModal = ({ issueId, onClose, onResolved }) => {
       setIssue(res.data);
 
       onResolved?.(); // This triggers refresh in parent if needed
-      alert('Mission Accepted! Status is now In Progress.');
+      alert('Issue Accepted! Status is now In Progress.');
     } catch (err) {
-      alert(err.response?.data?.detail || 'Failed to accept mission.');
+      alert(err.response?.data?.detail || 'Failed to accept issue.');
     } finally {
       setIsAccepting(false);
     }
@@ -683,7 +683,7 @@ const NotificationIssueViewModal = ({ issueId, onClose, onResolved }) => {
             {issue?.title || 'Loading Context...'}
           </h2>
           <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">
-            Deployment Hub: Mission Briefing
+            Deployment Hub: Issue Briefing
           </p>
         </div>
 
@@ -782,7 +782,7 @@ const NotificationIssueViewModal = ({ issueId, onClose, onResolved }) => {
                             {isAccepting ? (
                               <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
                             ) : (
-                              <>Accept Mission <ArrowRight size={18} /></>
+                              <>Accept Issue <ArrowRight size={18} /></>
                             )}
                           </button>
                         )}
@@ -815,7 +815,7 @@ const NotificationIssueViewModal = ({ issueId, onClose, onResolved }) => {
                       <div className="w-24 h-24 bg-success/10 rounded-[2.5rem] flex items-center justify-center text-success mb-10 border border-success/20 shadow-2xl shadow-success/10">
                         <CheckCircle size={48} />
                       </div>
-                      <h3 className="text-2xl font-black text-white tracking-tight uppercase mb-4">Mission Resolved</h3>
+                      <h3 className="text-2xl font-black text-white tracking-tight uppercase mb-4">Issue Resolved</h3>
                       <p className="text-sm text-slate-500 font-bold uppercase tracking-widest max-w-[200px]">The expertise matrix has been successfully updated.</p>
                     </div>
                   )}
